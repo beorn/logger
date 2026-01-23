@@ -6,23 +6,23 @@
  * Supports component tagging and log levels.
  */
 
-import pc from "picocolors"
+import pc from "picocolors";
 
 /** Log levels that produce output */
-export type OutputLogLevel = "trace" | "debug" | "info" | "warn" | "error"
+export type OutputLogLevel = "trace" | "debug" | "info" | "warn" | "error";
 
 /** All log levels including silent (for filtering) */
-export type LogLevel = OutputLogLevel | "silent"
+export type LogLevel = OutputLogLevel | "silent";
 
-export type Component = string // Allow any string for flexible component naming
+export type Component = string; // Allow any string for flexible component naming
 
 export interface LogEntry {
-  timestamp: string
-  level: LogLevel
-  component: Component
-  context?: string // Optional context shown after component, e.g. email address
-  message: string
-  data?: unknown
+  timestamp: string;
+  level: LogLevel;
+  component: Component;
+  context?: string; // Optional context shown after component, e.g. email address
+  message: string;
+  data?: unknown;
 }
 
 const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
@@ -31,11 +31,11 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
   info: 2,
   warn: 3,
   error: 4,
-  silent: 5 // Suppresses all logs - useful for tests
-}
+  silent: 5, // Suppresses all logs - useful for tests
+};
 
 // Initialize log level from environment variable or default to "info"
-const envLogLevel = process.env.LOG_LEVEL?.toLowerCase()
+const envLogLevel = process.env.LOG_LEVEL?.toLowerCase();
 const defaultLevel: LogLevel =
   envLogLevel === "trace" ||
   envLogLevel === "debug" ||
@@ -44,63 +44,64 @@ const defaultLevel: LogLevel =
   envLogLevel === "error" ||
   envLogLevel === "silent"
     ? envLogLevel
-    : "info"
+    : "info";
 
-let currentLogLevel: LogLevel = defaultLevel
+let currentLogLevel: LogLevel = defaultLevel;
 
 /**
  * Set the minimum log level (filters out lower priority logs)
  */
 export function setLogLevel(level: LogLevel) {
-  currentLogLevel = level
+  currentLogLevel = level;
 }
 
 /**
  * Get current log level
  */
 export function getLogLevel(): LogLevel {
-  return currentLogLevel
+  return currentLogLevel;
 }
 
 /**
  * Check if a log level should be output
  */
 function shouldLog(level: LogLevel): boolean {
-  return LOG_LEVEL_PRIORITY[level] >= LOG_LEVEL_PRIORITY[currentLogLevel]
+  return LOG_LEVEL_PRIORITY[level] >= LOG_LEVEL_PRIORITY[currentLogLevel];
 }
 
 /**
  * Format log entry for console output (pretty format)
  */
 function formatConsole(entry: LogEntry): string {
-  const time = pc.dim(entry.timestamp.split("T")[1]?.split(".")[0] || "")
-  const component = pc.cyan(`[${entry.component}]`)
-  const context = entry.context ? pc.magenta(` <${entry.context}>`) : ""
+  const time = pc.dim(entry.timestamp.split("T")[1]?.split(".")[0] || "");
+  const component = pc.cyan(`[${entry.component}]`);
+  const context = entry.context ? pc.magenta(` <${entry.context}>`) : "";
 
-  let levelStr = ""
+  let levelStr = "";
   switch (entry.level) {
     case "trace":
-      levelStr = pc.dim("TRACE")
-      break
+      levelStr = pc.dim("TRACE");
+      break;
     case "debug":
-      levelStr = pc.dim("DEBUG")
-      break
+      levelStr = pc.dim("DEBUG");
+      break;
     case "info":
-      levelStr = pc.blue("INFO")
-      break
+      levelStr = pc.blue("INFO");
+      break;
     case "warn":
-      levelStr = pc.yellow("WARN")
-      break
+      levelStr = pc.yellow("WARN");
+      break;
     case "error":
-      levelStr = pc.red("ERROR")
-      break
+      levelStr = pc.red("ERROR");
+      break;
   }
 
-  let output = `${time} ${levelStr} ${component}${context} ${entry.message}`
+  let output = `${time} ${levelStr} ${component}${context} ${entry.message}`;
 
-  if (entry.data !== undefined) output += ` ${pc.dim(JSON.stringify(entry.data))}`
+  if (entry.data !== undefined)
+    output += ` ${pc.dim(JSON.stringify(entry.data))}`;
 
-  return output
+  return output;
 }
 
 /**
@@ -108,16 +109,16 @@ function formatConsole(entry: LogEntry): string {
  * Handles circular references safely
  */
 function formatJSON(entry: LogEntry): string {
-  const seen = new WeakSet()
+  const seen = new WeakSet();
   return JSON.stringify(entry, (_key, value) => {
     if (typeof value === "object" && value !== null) {
       if (seen.has(value)) {
-        return "[Circular]"
+        return "[Circular]";
       }
-      seen.add(value)
+      seen.add(value);
     }
-    return value
-  })
+    return value;
+  });
 }
 
 /**
@@ -131,29 +132,31 @@ const consoleMethod: Record<LogLevel, (msg: string) => void> = {
   info: (msg) => console.info(msg),
   warn: (msg) => console.warn(msg),
   error: (msg) => console.error(msg),
-  silent: () => {} // No-op - silent level never logs
-}
+  silent: () => {}, // No-op - silent level never logs
+};
 
 /**
  * Write log entry using appropriate console method
  */
 function writeLog(entry: LogEntry) {
-  if (!shouldLog(entry.level)) return
+  if (!shouldLog(entry.level)) return;
 
   const formatted =
-    process.env.NODE_ENV === "production" ? formatJSON(entry) : formatConsole(entry)
+    process.env.NODE_ENV === "production"
+      ? formatJSON(entry)
+      : formatConsole(entry);
 
-  consoleMethod[entry.level](formatted)
+  consoleMethod[entry.level](formatted);
 }
 
 export interface Logger {
-  trace(message: string, data?: unknown): void
-  debug(message: string, data?: unknown): void
-  info(message: string, data?: unknown): void
-  warn(message: string, data?: unknown): void
-  error(message: string, data?: unknown): void
+  trace(message: string, data?: unknown): void;
+  debug(message: string, data?: unknown): void;
+  info(message: string, data?: unknown): void;
+  warn(message: string, data?: unknown): void;
+  error(message: string, data?: unknown): void;
   /** Create a child logger with additional context */
-  child(childContext: string): Logger
+  child(childContext: string): Logger;
 }
 
 /**
@@ -170,8 +173,8 @@ export function createLogger(component: Component, context?: string): Logger {
         component,
         context,
         message,
-        data
-      })
+        data,
+      });
     },
 
     debug(message: string, data?: unknown) {
@@ -181,8 +184,8 @@ export function createLogger(component: Component, context?: string): Logger {
         component,
         context,
         message,
-        data
-      })
+        data,
+      });
     },
 
     info(message: string, data?: unknown) {
@@ -192,8 +195,8 @@ export function createLogger(component: Component, context?: string): Logger {
         component,
         context,
         message,
-        data
-      })
+        data,
+      });
     },
 
     warn(message: string, data?: unknown) {
@@ -203,8 +206,8 @@ export function createLogger(component: Component, context?: string): Logger {
         component,
         context,
         message,
-        data
-      })
+        data,
+      });
     },
 
     error(message: string, data?: unknown) {
@@ -214,13 +217,13 @@ export function createLogger(component: Component, context?: string): Logger {
         component,
         context,
         message,
-        data
-      })
+        data,
+      });
     },
 
     child(childContext: string): Logger {
-      const newContext = context ? `${context}:${childContext}` : childContext
-      return createLogger(component, newContext)
-    }
-  }
+      const newContext = context ? `${context}:${childContext}` : childContext;
+      return createLogger(component, newContext);
+    },
+  };
 }
