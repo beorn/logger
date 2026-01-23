@@ -1,0 +1,13 @@
+{
+  "name": "@beorn/logger",
+  "description": "Structured logging with colors/JSON output",
+  "version": "0.1.0",
+  "type": "module",
+  "module": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "picocolors": "^1.1.1"
+  }
+}
