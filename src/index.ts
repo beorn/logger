@@ -136,6 +136,25 @@ export function spansAreEnabled(): boolean {
   return spansEnabled
 }
 
+/**
+ * Set trace filter for namespace-based span output control.
+ * Only spans matching these namespace prefixes will be output.
+ * @param namespaces - Array of namespace prefixes, or null to disable filtering
+ */
+export function setTraceFilter(namespaces: string[] | null): void {
+  if (namespaces === null || namespaces.length === 0) {
+    traceFilter = null
+  } else {
+    traceFilter = new Set(namespaces)
+    spansEnabled = true
+  }
+}
+
+/** Get current trace filter (null means no filtering) */
+export function getTraceFilter(): string[] | null {
+  return traceFilter ? [...traceFilter] : null
+}
+
 // ============ ID Generation ============
 
 let spanIdCounter = 0

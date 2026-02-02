@@ -7,12 +7,18 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest"
 import {
   createLogger,
+  createConditionalLogger,
   enableSpans,
   disableSpans,
   setLogLevel,
+  getLogLevel,
+  spansAreEnabled,
+  setTraceFilter,
+  getTraceFilter,
   resetIds,
   type Logger,
   type SpanLogger,
+  type ConditionalLogger,
 } from "../src/index.ts"
 
 // Capture console output
@@ -23,6 +29,7 @@ beforeEach(() => {
   resetIds()
   setLogLevel("trace") // Enable all levels
   disableSpans() // Start with spans disabled
+  setTraceFilter(null) // Clear any trace filter
 
   // Mock console methods
   vi.spyOn(console, "debug").mockImplementation((msg) => {
@@ -368,5 +375,382 @@ describe("console method usage (patchConsole compatibility)", () => {
 
     const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
     expect(spanOutput!.level).toBe("error") // Spans go to stderr via console.error
+  })
+})
+
+describe("createConditionalLogger", () => {
+  test("returns log methods when level is enabled", () => {
+    setLogLevel("debug")
+    const log = createConditionalLogger("test")
+
+    expect(log.debug).toBeDefined()
+    expect(log.info).toBeDefined()
+    expect(log.warn).toBeDefined()
+    expect(log.error).toBeDefined()
+  })
+
+  test("returns undefined for disabled levels", () => {
+    setLogLevel("warn")
+    const log = createConditionalLogger("test")
+
+    expect(log.trace).toBeUndefined()
+    expect(log.debug).toBeUndefined()
+    expect(log.info).toBeUndefined()
+    expect(log.warn).toBeDefined()
+    expect(log.error).toBeDefined()
+  })
+
+  test("optional chaining skips call when disabled", () => {
+    setLogLevel("error")
+    const log = createConditionalLogger("test")
+
+    // These should not throw, just return undefined
+    log.debug?.("should not log")
+    log.info?.("should not log")
+    log.warn?.("should not log")
+
+    expect(consoleOutput).toHaveLength(0)
+  })
+
+  test("optional chaining calls method when enabled", () => {
+    setLogLevel("debug")
+    const log = createConditionalLogger("test")
+
+    log.debug?.("should log")
+
+    expect(consoleOutput).toHaveLength(1)
+    expect(consoleOutput[0]!.message).toContain("should log")
+  })
+
+  test("inherits props from base logger", () => {
+    setLogLevel("info")
+    const log = createConditionalLogger("test", { version: "1.0" })
+
+    expect(log.props).toEqual({ version: "1.0" })
+  })
+
+  test("can create child loggers", () => {
+    setLogLevel("info")
+    const log = createConditionalLogger("test")
+    const child = log.logger("child")
+
+    expect(child.name).toBe("test:child")
+  })
+
+  test("can create spans", () => {
+    setLogLevel("info")
+    const log = createConditionalLogger("test")
+    const span = log.span("work")
+
+    expect(span.spanData).not.toBeNull()
+    span.end()
+  })
+
+  test("responds to log level changes", () => {
+    const log = createConditionalLogger("test")
+
+    setLogLevel("error")
+    expect(log.debug).toBeUndefined()
+    expect(log.info).toBeUndefined()
+
+    setLogLevel("debug")
+    expect(log.debug).toBeDefined()
+    expect(log.info).toBeDefined()
+  })
+})
+
+describe("configuration functions", () => {
+  test("getLogLevel returns current level", () => {
+    setLogLevel("warn")
+    expect(getLogLevel()).toBe("warn")
+
+    setLogLevel("debug")
+    expect(getLogLevel()).toBe("debug")
+  })
+
+  test("spansAreEnabled tracks span state", () => {
+    disableSpans()
+    expect(spansAreEnabled()).toBe(false)
+
+    enableSpans()
+    expect(spansAreEnabled()).toBe(true)
+
+    disableSpans()
+    expect(spansAreEnabled()).toBe(false)
+  })
+})
+
+describe("JSON format output", () => {
+  let originalNodeEnv: string | undefined
+  let originalTraceFormat: string | undefined
+
+  beforeEach(() => {
+    originalNodeEnv = process.env.NODE_ENV
+    originalTraceFormat = process.env.TRACE_FORMAT
+  })
+
+  afterEach(() => {
+    if (originalNodeEnv === undefined) {
+      delete process.env.NODE_ENV
+    } else {
+      process.env.NODE_ENV = originalNodeEnv
+    }
+    if (originalTraceFormat === undefined) {
+      delete process.env.TRACE_FORMAT
+    } else {
+      process.env.TRACE_FORMAT = originalTraceFormat
+    }
+  })
+
+  test("TRACE_FORMAT=json produces JSON output", () => {
+    process.env.TRACE_FORMAT = "json"
+    const log = createLogger("test")
+
+    log.info("test message", { key: "value" })
+
+    const output = consoleOutput[0]!.message
+    const parsed = JSON.parse(output)
+    expect(parsed.level).toBe("info")
+    expect(parsed.name).toBe("test")
+    expect(parsed.msg).toBe("test message")
+    expect(parsed.key).toBe("value")
+    expect(parsed.time).toBeDefined()
+  })
+
+  test("NODE_ENV=production produces JSON output", () => {
+    process.env.NODE_ENV = "production"
+    delete process.env.TRACE_FORMAT
+    const log = createLogger("test")
+
+    log.info("prod message")
+
+    const output = consoleOutput[0]!.message
+    const parsed = JSON.parse(output)
+    expect(parsed.level).toBe("info")
+    expect(parsed.msg).toBe("prod message")
+  })
+
+  test("JSON output includes all props", () => {
+    process.env.TRACE_FORMAT = "json"
+    const log = createLogger("test", { app: "myapp", version: "1.0" })
+
+    log.info("message")
+
+    const output = consoleOutput[0]!.message
+    const parsed = JSON.parse(output)
+    expect(parsed.app).toBe("myapp")
+    expect(parsed.version).toBe("1.0")
+  })
+
+  test("JSON output handles errors", () => {
+    process.env.TRACE_FORMAT = "json"
+    const log = createLogger("test")
+    const err = new Error("test error")
+
+    log.error(err)
+
+    const output = consoleOutput[0]!.message
+    const parsed = JSON.parse(output)
+    expect(parsed.msg).toBe("test error")
+    expect(parsed.error_type).toBe("Error")
+    expect(parsed.error_stack).toContain("Error: test error")
+  })
+
+  test("JSON span output includes duration", () => {
+    process.env.TRACE_FORMAT = "json"
+    enableSpans()
+    const log = createLogger("test")
+
+    {
+      using span = log.span("work")
+      span.spanData.count = 42
+    }
+
+    const spanOutput = consoleOutput.find((o) => {
+      try {
+        const parsed = JSON.parse(o.message)
+        return parsed.level === "span"
+      } catch {
+        return false
+      }
+    })
+    expect(spanOutput).toBeDefined()
+
+    const parsed = JSON.parse(spanOutput!.message)
+    expect(parsed.level).toBe("span")
+    expect(parsed.name).toBe("test:work")
+    expect(parsed.duration).toBeGreaterThanOrEqual(0)
+    expect(parsed.count).toBe(42)
+  })
+
+  test("JSON handles circular references", () => {
+    process.env.TRACE_FORMAT = "json"
+    const log = createLogger("test")
+
+    const circular: Record<string, unknown> = { name: "test" }
+    circular.self = circular
+
+    log.info("circular", circular)
+
+    const output = consoleOutput[0]!.message
+    // Should not throw, should contain [Circular]
+    expect(output).toContain("[Circular]")
+  })
+})
+
+describe("console format output", () => {
+  test("includes timestamp", () => {
+    const log = createLogger("test")
+    log.info("message")
+
+    // Format: HH:MM:SS
+    expect(consoleOutput[0]!.message).toMatch(/\d{2}:\d{2}:\d{2}/)
+  })
+
+  test("includes level label", () => {
+    const log = createLogger("test")
+
+    log.trace("t")
+    log.debug("d")
+    log.info("i")
+    log.warn("w")
+    log.error("e")
+
+    expect(consoleOutput[0]!.message).toContain("TRACE")
+    expect(consoleOutput[1]!.message).toContain("DEBUG")
+    expect(consoleOutput[2]!.message).toContain("INFO")
+    expect(consoleOutput[3]!.message).toContain("WARN")
+    expect(consoleOutput[4]!.message).toContain("ERROR")
+  })
+
+  test("includes namespace", () => {
+    const log = createLogger("myapp")
+    log.info("message")
+
+    expect(consoleOutput[0]!.message).toContain("myapp")
+  })
+
+  test("span format includes SPAN label and duration", () => {
+    enableSpans()
+    const log = createLogger("test")
+
+    {
+      using span = log.span("work")
+    }
+
+    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    expect(spanOutput).toBeDefined()
+    expect(spanOutput!.message).toMatch(/\(\d+ms\)/)
+  })
+})
+
+describe("TRACE namespace filtering", () => {
+  test("setTraceFilter with namespaces enables spans and filtering", () => {
+    setTraceFilter(["myapp"])
+
+    expect(spansAreEnabled()).toBe(true)
+    expect(getTraceFilter()).toEqual(["myapp"])
+  })
+
+  test("setTraceFilter(null) clears filter", () => {
+    setTraceFilter(["myapp"])
+    setTraceFilter(null)
+
+    expect(getTraceFilter()).toBeNull()
+  })
+
+  test("setTraceFilter([]) clears filter", () => {
+    setTraceFilter(["myapp"])
+    setTraceFilter([])
+
+    expect(getTraceFilter()).toBeNull()
+  })
+
+  test("filter allows exact namespace match", () => {
+    setTraceFilter(["myapp"])
+    const log = createLogger("myapp")
+
+    {
+      using span = log.span("work")
+    }
+
+    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    expect(spanOutput).toBeDefined()
+  })
+
+  test("filter allows child namespace match", () => {
+    setTraceFilter(["myapp"])
+    const log = createLogger("myapp")
+
+    {
+      using span = log.span("import") // myapp:import
+    }
+
+    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    expect(spanOutput).toBeDefined()
+  })
+
+  test("filter blocks non-matching namespace", () => {
+    setTraceFilter(["myapp"])
+    const log = createLogger("other")
+
+    {
+      using span = log.span("work")
+    }
+
+    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    expect(spanOutput).toBeUndefined()
+  })
+
+  test("filter supports multiple namespaces", () => {
+    setTraceFilter(["myapp", "other"])
+
+    const log1 = createLogger("myapp")
+    const log2 = createLogger("other")
+    const log3 = createLogger("blocked")
+
+    {
+      using span = log1.span("work")
+    }
+    {
+      using span = log2.span("work")
+    }
+    {
+      using span = log3.span("work")
+    }
+
+    const spanOutputs = consoleOutput.filter((o) => o.message.includes("SPAN"))
+    expect(spanOutputs).toHaveLength(2)
+    expect(spanOutputs[0]!.message).toContain("myapp")
+    expect(spanOutputs[1]!.message).toContain("other")
+  })
+
+  test("filter does not affect regular log messages", () => {
+    setTraceFilter(["myapp"])
+    const log = createLogger("other") // Not in filter
+
+    log.info("regular log")
+
+    // Regular logs still appear
+    expect(consoleOutput).toHaveLength(1)
+    expect(consoleOutput[0]!.message).toContain("regular log")
+  })
+
+  test("no filter when spans enabled without setTraceFilter", () => {
+    enableSpans()
+
+    const log1 = createLogger("any")
+    const log2 = createLogger("namespace")
+
+    {
+      using span = log1.span("work")
+    }
+    {
+      using span = log2.span("work")
+    }
+
+    // Both should appear
+    const spanOutputs = consoleOutput.filter((o) => o.message.includes("SPAN"))
+    expect(spanOutputs).toHaveLength(2)
   })
 })
