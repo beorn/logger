@@ -475,3 +475,41 @@ export function getCollectedSpans(): SpanData[] {
 export function clearCollectedSpans(): void {
   collectedSpans.length = 0
 }
+
+// ============ Conditional Logger (TUI Pattern) ============
+
+/** Logger with optional methods - returns undefined for disabled levels */
+export interface ConditionalLogger extends Logger {
+  trace?: Logger["trace"]
+  debug?: Logger["debug"]
+  info?: Logger["info"]
+  warn?: Logger["warn"]
+  error?: Logger["error"]
+}
+
+/**
+ * Create a conditional logger that returns undefined for disabled levels.
+ * Use with optional chaining to skip argument evaluation for disabled levels.
+ *
+ * @example
+ * const log = createConditionalLogger('myapp')
+ * log.debug?.(`expensive: ${computeExpensiveState()}`)  // Skips if debug disabled
+ */
+export function createConditionalLogger(
+  name: string,
+  props?: Record<string, unknown>
+): ConditionalLogger {
+  const baseLog = createLogger(name, props)
+
+  return new Proxy(baseLog as ConditionalLogger, {
+    get(target, prop: string) {
+      if (prop in LOG_LEVEL_PRIORITY && prop !== "silent") {
+        const current = LOG_LEVEL_PRIORITY[currentLogLevel]
+        if (LOG_LEVEL_PRIORITY[prop as keyof typeof LOG_LEVEL_PRIORITY] < current) {
+          return undefined
+        }
+      }
+      return (target as Record<string, unknown>)[prop]
+    },
+  })
+}
