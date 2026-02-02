@@ -79,27 +79,27 @@ describe("logging methods", () => {
     log.error("error message")
 
     expect(consoleOutput).toHaveLength(5)
-    expect(consoleOutput[0].level).toBe("debug") // trace uses console.debug
-    expect(consoleOutput[1].level).toBe("debug")
-    expect(consoleOutput[2].level).toBe("info")
-    expect(consoleOutput[3].level).toBe("warn")
-    expect(consoleOutput[4].level).toBe("error")
+    expect(consoleOutput[0]!.level).toBe("debug") // trace uses console.debug
+    expect(consoleOutput[1]!.level).toBe("debug")
+    expect(consoleOutput[2]!.level).toBe("info")
+    expect(consoleOutput[3]!.level).toBe("warn")
+    expect(consoleOutput[4]!.level).toBe("error")
   })
 
   test("includes data in output", () => {
     const log = createLogger("test")
     log.info("message", { key: "value" })
 
-    expect(consoleOutput[0].message).toContain("key")
-    expect(consoleOutput[0].message).toContain("value")
+    expect(consoleOutput[0]!.message).toContain("key")
+    expect(consoleOutput[0]!.message).toContain("value")
   })
 
   test("inherits props in output", () => {
     const log = createLogger("test", { app: "myapp" })
     log.info("message")
 
-    expect(consoleOutput[0].message).toContain("app")
-    expect(consoleOutput[0].message).toContain("myapp")
+    expect(consoleOutput[0]!.message).toContain("app")
+    expect(consoleOutput[0]!.message).toContain("myapp")
   })
 
   test("respects log level filtering", () => {
@@ -120,8 +120,8 @@ describe("logging methods", () => {
 
     log.error(err)
 
-    expect(consoleOutput[0].message).toContain("Something went wrong")
-    expect(consoleOutput[0].message).toContain("error_type")
+    expect(consoleOutput[0]!.message).toContain("Something went wrong")
+    expect(consoleOutput[0]!.message).toContain("error_type")
   })
 })
 
@@ -298,7 +298,7 @@ describe("span output control", () => {
 
     // Only the info log, no span
     expect(consoleOutput).toHaveLength(1)
-    expect(consoleOutput[0].message).not.toContain("SPAN")
+    expect(consoleOutput[0]!.message).not.toContain("SPAN")
   })
 
   test("enableSpans() enables span output", () => {
@@ -333,29 +333,29 @@ describe("console method usage (patchConsole compatibility)", () => {
     log.trace("t")
     log.debug("d")
 
-    expect(consoleOutput[0].level).toBe("debug")
-    expect(consoleOutput[1].level).toBe("debug")
+    expect(consoleOutput[0]!.level).toBe("debug")
+    expect(consoleOutput[1]!.level).toBe("debug")
   })
 
   test("info uses console.info", () => {
     const log = createLogger("test")
     log.info("i")
 
-    expect(consoleOutput[0].level).toBe("info")
+    expect(consoleOutput[0]!.level).toBe("info")
   })
 
   test("warn uses console.warn", () => {
     const log = createLogger("test")
     log.warn("w")
 
-    expect(consoleOutput[0].level).toBe("warn")
+    expect(consoleOutput[0]!.level).toBe("warn")
   })
 
   test("error uses console.error", () => {
     const log = createLogger("test")
     log.error("e")
 
-    expect(consoleOutput[0].level).toBe("error")
+    expect(consoleOutput[0]!.level).toBe("error")
   })
 
   test("span output uses console.error (for stderr)", () => {
