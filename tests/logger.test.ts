@@ -1,0 +1,372 @@
+/**
+ * @beorn/logger Test Suite
+ *
+ * Tests for the logger-first observability system.
+ */
+
+import { describe, test, expect, beforeEach, afterEach, vi } from "vitest"
+import {
+  createLogger,
+  enableSpans,
+  disableSpans,
+  setLogLevel,
+  resetIds,
+  type Logger,
+  type SpanLogger,
+} from "../src/index.ts"
+
+// Capture console output
+let consoleOutput: { level: string; message: string }[] = []
+
+beforeEach(() => {
+  consoleOutput = []
+  resetIds()
+  setLogLevel("trace") // Enable all levels
+  disableSpans() // Start with spans disabled
+
+  // Mock console methods
+  vi.spyOn(console, "debug").mockImplementation((msg) => {
+    consoleOutput.push({ level: "debug", message: String(msg) })
+  })
+  vi.spyOn(console, "info").mockImplementation((msg) => {
+    consoleOutput.push({ level: "info", message: String(msg) })
+  })
+  vi.spyOn(console, "warn").mockImplementation((msg) => {
+    consoleOutput.push({ level: "warn", message: String(msg) })
+  })
+  vi.spyOn(console, "error").mockImplementation((msg) => {
+    consoleOutput.push({ level: "error", message: String(msg) })
+  })
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+describe("createLogger", () => {
+  test("creates logger with name", () => {
+    const log = createLogger("myapp")
+    expect(log.name).toBe("myapp")
+  })
+
+  test("creates logger with props", () => {
+    const log = createLogger("myapp", { version: "1.0" })
+    expect(log.props).toEqual({ version: "1.0" })
+  })
+
+  test("props are frozen", () => {
+    const log = createLogger("myapp", { version: "1.0" })
+    expect(() => {
+      // @ts-expect-error - testing immutability
+      log.props.version = "2.0"
+    }).toThrow()
+  })
+
+  test("spanData is null for regular logger", () => {
+    const log = createLogger("myapp")
+    expect(log.spanData).toBeNull()
+  })
+})
+
+describe("logging methods", () => {
+  test("logs at each level", () => {
+    const log = createLogger("test")
+
+    log.trace("trace message")
+    log.debug("debug message")
+    log.info("info message")
+    log.warn("warn message")
+    log.error("error message")
+
+    expect(consoleOutput).toHaveLength(5)
+    expect(consoleOutput[0].level).toBe("debug") // trace uses console.debug
+    expect(consoleOutput[1].level).toBe("debug")
+    expect(consoleOutput[2].level).toBe("info")
+    expect(consoleOutput[3].level).toBe("warn")
+    expect(consoleOutput[4].level).toBe("error")
+  })
+
+  test("includes data in output", () => {
+    const log = createLogger("test")
+    log.info("message", { key: "value" })
+
+    expect(consoleOutput[0].message).toContain("key")
+    expect(consoleOutput[0].message).toContain("value")
+  })
+
+  test("inherits props in output", () => {
+    const log = createLogger("test", { app: "myapp" })
+    log.info("message")
+
+    expect(consoleOutput[0].message).toContain("app")
+    expect(consoleOutput[0].message).toContain("myapp")
+  })
+
+  test("respects log level filtering", () => {
+    setLogLevel("warn")
+    const log = createLogger("test")
+
+    log.debug("should not appear")
+    log.info("should not appear")
+    log.warn("should appear")
+    log.error("should appear")
+
+    expect(consoleOutput).toHaveLength(2)
+  })
+
+  test("error accepts Error object", () => {
+    const log = createLogger("test")
+    const err = new Error("Something went wrong")
+
+    log.error(err)
+
+    expect(consoleOutput[0].message).toContain("Something went wrong")
+    expect(consoleOutput[0].message).toContain("error_type")
+  })
+})
+
+describe("logger hierarchy", () => {
+  test(".logger() creates child with extended namespace", () => {
+    const parent = createLogger("app")
+    const child = parent.logger("import")
+
+    expect(child.name).toBe("app:import")
+  })
+
+  test(".logger() inherits parent props", () => {
+    const parent = createLogger("app", { version: "1.0" })
+    const child = parent.logger("import")
+
+    expect(child.props).toEqual({ version: "1.0" })
+  })
+
+  test(".logger() merges additional props", () => {
+    const parent = createLogger("app", { version: "1.0" })
+    const child = parent.logger("import", { file: "data.csv" })
+
+    expect(child.props).toEqual({ version: "1.0", file: "data.csv" })
+  })
+
+  test(".logger() without namespace keeps same name", () => {
+    const parent = createLogger("app")
+    const child = parent.logger(undefined, { extra: true })
+
+    expect(child.name).toBe("app")
+  })
+
+  test(".child() is deprecated alias for .logger()", () => {
+    const parent = createLogger("app")
+    const child = parent.child("import")
+
+    expect(child.name).toBe("app:import")
+  })
+})
+
+describe("spans", () => {
+  test(".span() creates logger with spanData", () => {
+    const log = createLogger("app")
+    const span = log.span("import")
+
+    expect(span.spanData).not.toBeNull()
+    expect(span.spanData!.id).toBe("sp_1")
+    expect(span.spanData!.traceId).toBe("tr_1")
+  })
+
+  test("span extends namespace", () => {
+    const log = createLogger("app")
+    const span = log.span("import")
+
+    expect(span.name).toBe("app:import")
+  })
+
+  test("span inherits props", () => {
+    const log = createLogger("app", { version: "1.0" })
+    const span = log.span("import", { file: "data.csv" })
+
+    expect(span.props).toEqual({ version: "1.0", file: "data.csv" })
+  })
+
+  test("span has live duration", () => {
+    const log = createLogger("app")
+    const span = log.span("import")
+
+    const d1 = span.spanData!.duration
+    expect(d1).toBeGreaterThanOrEqual(0)
+
+    // Wait a bit
+    const start = Date.now()
+    while (Date.now() - start < 10) {}
+
+    const d2 = span.spanData!.duration
+    expect(d2).toBeGreaterThan(d1!)
+
+    span.end()
+  })
+
+  test("span attributes can be set", () => {
+    const log = createLogger("app")
+    const span = log.span("import")
+
+    span.spanData.count = 42
+    span.spanData.name = "test"
+
+    expect(span.spanData.count).toBe(42)
+    expect(span.spanData.name).toBe("test")
+
+    span.end()
+  })
+
+  test("using keyword auto-disposes span", () => {
+    enableSpans()
+    const log = createLogger("app")
+
+    {
+      using span = log.span("import")
+      span.spanData.count = 42
+    }
+
+    // Span event should be emitted
+    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    expect(spanOutput).toBeDefined()
+    expect(spanOutput!.message).toContain("app:import")
+  })
+
+  test("nested spans have parent-child relationship", () => {
+    const log = createLogger("app")
+
+    const parent = log.span("import")
+    const child = parent.span("parse")
+
+    expect(child.spanData!.parentId).toBe(parent.spanData!.id)
+    expect(child.spanData!.traceId).toBe(parent.spanData!.traceId)
+
+    child.end()
+    parent.end()
+  })
+
+  test("nested spans share trace ID", () => {
+    const log = createLogger("app")
+
+    const span1 = log.span("import")
+    const span2 = span1.span("parse")
+    const span3 = span2.span("validate")
+
+    expect(span1.spanData!.traceId).toBe("tr_1")
+    expect(span2.spanData!.traceId).toBe("tr_1")
+    expect(span3.spanData!.traceId).toBe("tr_1")
+
+    span3.end()
+    span2.end()
+    span1.end()
+  })
+
+  test(".end() can be called manually", () => {
+    enableSpans()
+    const log = createLogger("app")
+    const span = log.span("import")
+
+    span.end()
+
+    expect(span.spanData!.endTime).not.toBeNull()
+    expect(span.spanData!.duration).toBeGreaterThanOrEqual(0)
+  })
+
+  test("span output includes attributes", () => {
+    enableSpans()
+    const log = createLogger("app")
+
+    {
+      using span = log.span("import", { file: "data.csv" })
+      span.spanData.count = 42
+    }
+
+    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    expect(spanOutput!.message).toContain("file")
+    expect(spanOutput!.message).toContain("count")
+    expect(spanOutput!.message).toContain("42")
+  })
+})
+
+describe("span output control", () => {
+  test("spans disabled by default", () => {
+    const log = createLogger("app")
+
+    {
+      using span = log.span("import")
+      span.info("working")
+    }
+
+    // Only the info log, no span
+    expect(consoleOutput).toHaveLength(1)
+    expect(consoleOutput[0].message).not.toContain("SPAN")
+  })
+
+  test("enableSpans() enables span output", () => {
+    enableSpans()
+    const log = createLogger("app")
+
+    {
+      using span = log.span("import")
+    }
+
+    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    expect(spanOutput).toBeDefined()
+  })
+
+  test("disableSpans() disables span output", () => {
+    enableSpans()
+    disableSpans()
+    const log = createLogger("app")
+
+    {
+      using span = log.span("import")
+    }
+
+    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    expect(spanOutput).toBeUndefined()
+  })
+})
+
+describe("console method usage (patchConsole compatibility)", () => {
+  test("trace/debug use console.debug", () => {
+    const log = createLogger("test")
+    log.trace("t")
+    log.debug("d")
+
+    expect(consoleOutput[0].level).toBe("debug")
+    expect(consoleOutput[1].level).toBe("debug")
+  })
+
+  test("info uses console.info", () => {
+    const log = createLogger("test")
+    log.info("i")
+
+    expect(consoleOutput[0].level).toBe("info")
+  })
+
+  test("warn uses console.warn", () => {
+    const log = createLogger("test")
+    log.warn("w")
+
+    expect(consoleOutput[0].level).toBe("warn")
+  })
+
+  test("error uses console.error", () => {
+    const log = createLogger("test")
+    log.error("e")
+
+    expect(consoleOutput[0].level).toBe("error")
+  })
+
+  test("span output uses console.error (for stderr)", () => {
+    enableSpans()
+    const log = createLogger("test")
+
+    {
+      using span = log.span("work")
+    }
+
+    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    expect(spanOutput!.level).toBe("error") // Spans go to stderr via console.error
+  })
+})
