@@ -4,9 +4,20 @@
   "description": "Structured logging with colors/JSON output",
   "type": "module",
   "module": "src/index.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./worker": "./src/worker.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "default": "./src/worker.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "picocolors": "^1.1.1"

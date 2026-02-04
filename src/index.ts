@@ -517,7 +517,10 @@ export function clearCollectedSpans(): void {
 // ============ Conditional Logger (TUI Pattern) ============
 
 /** Logger with optional methods - returns undefined for disabled levels */
-export interface ConditionalLogger extends Logger {
+export type ConditionalLogger = Omit<
+  Logger,
+  "trace" | "debug" | "info" | "warn" | "error"
+> & {
   trace?: Logger["trace"]
   debug?: Logger["debug"]
   info?: Logger["info"]
@@ -549,7 +552,7 @@ export function createConditionalLogger(
           return undefined
         }
       }
-      return (target as Record<string, unknown>)[prop]
+      return (target as unknown as Record<string, unknown>)[prop]
     },
   })
 }
