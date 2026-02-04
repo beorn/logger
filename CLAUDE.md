@@ -153,7 +153,7 @@ getTraceFilter() // Get current filter: ["myapp"] or null
 `createLogger` returns `undefined` for disabled log levels, enabling zero-overhead logging.
 
 **Log levels** (most → least verbose): `trace < debug < info < warn < error < silent`
-**Default level**: `info` (trace and debug disabled)
+**Default level**: `warn` for km CLI (trace, debug, and info disabled)
 
 ```typescript
 import { createLogger } from "@beorn/logger"
@@ -161,14 +161,14 @@ import { createLogger } from "@beorn/logger"
 const log = createLogger("km:tui")
 
 // All methods support ?. for zero-overhead when their level is disabled
-log.trace?.(`very verbose: ${expensiveDebug()}`)  // Skipped at default (info)
-log.debug?.(`state: ${getState()}`)               // Skipped at default (info)
-log.info?.("starting")                            // Enabled at default
-log.warn?.("deprecated")                          // Enabled at default
+log.trace?.(`very verbose: ${expensiveDebug()}`)  // Skipped at default (warn)
+log.debug?.(`state: ${getState()}`)               // Skipped at default (warn)
+log.info?.("starting")                            // Skipped at default (warn)
+log.warn?.("deprecated")                          // Enabled at default (warn)
 log.error?.("failed")                             // Enabled at default
 
-// With -q flag or LOG_LEVEL=warn, info is also skipped:
-log.info?.("starting")  // Skipped when level=warn
+// With -v flag or LOG_LEVEL=info, info is enabled:
+log.info?.("starting")  // Enabled when level=info
 ```
 
 ### Why optional chaining?
