@@ -31,6 +31,9 @@ beforeEach(() => {
   disableSpans()
 
   // Mock console methods for main thread
+  vi.spyOn(console, "log").mockImplementation((msg) => {
+    consoleOutput.push({ level: "log", message: String(msg) })
+  })
   vi.spyOn(console, "debug").mockImplementation((msg) => {
     consoleOutput.push({ level: "debug", message: String(msg) })
   })
@@ -42,6 +45,9 @@ beforeEach(() => {
   })
   vi.spyOn(console, "error").mockImplementation((msg) => {
     consoleOutput.push({ level: "error", message: String(msg) })
+  })
+  vi.spyOn(console, "trace").mockImplementation((msg) => {
+    consoleOutput.push({ level: "trace", message: String(msg) })
   })
 })
 
