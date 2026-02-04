@@ -452,7 +452,7 @@ function createLoggerImpl(
     },
 
     end(): void {
-      if (spanMeta && spanMeta.endTime === null) {
+      if (spanMeta?.endTime === null) {
         ;(this as unknown as { [Symbol.dispose]: () => void })[
           Symbol.dispose
         ]?.()

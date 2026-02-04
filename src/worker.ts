@@ -97,8 +97,7 @@ export function isWorkerConsoleMessage(
 ): msg is WorkerConsoleMessage {
   return (
     typeof msg === "object" &&
-    msg !== null &&
-    (msg as WorkerConsoleMessage).type === "console" &&
+    (msg as WorkerConsoleMessage)?.type === "console" &&
     typeof (msg as WorkerConsoleMessage).level === "string" &&
     Array.isArray((msg as WorkerConsoleMessage).args)
   )
@@ -108,8 +107,7 @@ export function isWorkerConsoleMessage(
 export function isWorkerLogMessage(msg: unknown): msg is WorkerLogMessage {
   return (
     typeof msg === "object" &&
-    msg !== null &&
-    (msg as WorkerLogMessage).type === "log" &&
+    (msg as WorkerLogMessage)?.type === "log" &&
     typeof (msg as WorkerLogMessage).level === "string" &&
     typeof (msg as WorkerLogMessage).namespace === "string"
   )
@@ -119,8 +117,7 @@ export function isWorkerLogMessage(msg: unknown): msg is WorkerLogMessage {
 export function isWorkerSpanMessage(msg: unknown): msg is WorkerSpanMessage {
   return (
     typeof msg === "object" &&
-    msg !== null &&
-    (msg as WorkerSpanMessage).type === "span" &&
+    (msg as WorkerSpanMessage)?.type === "span" &&
     typeof (msg as WorkerSpanMessage).event === "string"
   )
 }
