@@ -1,7 +1,7 @@
 {
   "name": "@beorn/logger",
-  "description": "Structured logging with colors/JSON output",
   "version": "0.1.0",
+  "description": "Structured logging with colors/JSON output",
   "type": "module",
   "module": "src/index.ts",
   "exports": {

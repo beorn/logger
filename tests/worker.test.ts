@@ -19,7 +19,12 @@ import {
   type WorkerSpanMessage,
   type WorkerMessage,
 } from "../src/worker.ts"
-import { setLogLevel, resetIds, disableSpans, enableSpans } from "../src/index.ts"
+import {
+  setLogLevel,
+  resetIds,
+  disableSpans,
+  enableSpans,
+} from "../src/index.ts"
 
 // Capture console output from main thread handler
 let consoleOutput: { level: string; message: string }[] = []
@@ -73,7 +78,9 @@ describe("isWorkerConsoleMessage", () => {
     expect(isWorkerConsoleMessage({})).toBe(false)
     expect(isWorkerConsoleMessage({ type: "other" })).toBe(false)
     expect(isWorkerConsoleMessage({ type: "console" })).toBe(false)
-    expect(isWorkerConsoleMessage({ type: "console", level: "log" })).toBe(false)
+    expect(isWorkerConsoleMessage({ type: "console", level: "log" })).toBe(
+      false,
+    )
   })
 })
 
@@ -142,7 +149,11 @@ describe("forwardConsole", () => {
     forwardConsole(mockPostMessage)
     console.error(new Error("test error"))
 
-    const serializedError = messages[0]!.args[0] as { name: string; message: string; stack: string }
+    const serializedError = messages[0]!.args[0] as {
+      name: string
+      message: string
+      stack: string
+    }
     expect(serializedError.name).toBe("Error")
     expect(serializedError.message).toBe("test error")
     expect(serializedError.stack).toContain("Error: test error")
@@ -221,11 +232,36 @@ describe("createWorkerConsoleHandler", () => {
   test("maps console levels to logger levels", () => {
     const handler = createWorkerConsoleHandler({ defaultNamespace: "test" })
 
-    handler({ type: "console", level: "log", args: ["l"], timestamp: Date.now() })
-    handler({ type: "console", level: "debug", args: ["d"], timestamp: Date.now() })
-    handler({ type: "console", level: "info", args: ["i"], timestamp: Date.now() })
-    handler({ type: "console", level: "warn", args: ["w"], timestamp: Date.now() })
-    handler({ type: "console", level: "error", args: ["e"], timestamp: Date.now() })
+    handler({
+      type: "console",
+      level: "log",
+      args: ["l"],
+      timestamp: Date.now(),
+    })
+    handler({
+      type: "console",
+      level: "debug",
+      args: ["d"],
+      timestamp: Date.now(),
+    })
+    handler({
+      type: "console",
+      level: "info",
+      args: ["i"],
+      timestamp: Date.now(),
+    })
+    handler({
+      type: "console",
+      level: "warn",
+      args: ["w"],
+      timestamp: Date.now(),
+    })
+    handler({
+      type: "console",
+      level: "error",
+      args: ["e"],
+      timestamp: Date.now(),
+    })
 
     expect(consoleOutput).toHaveLength(5)
     // log -> info, debug -> debug, info -> info, warn -> warn, error -> error
@@ -276,7 +312,15 @@ describe("end-to-end forwarding", () => {
 
 describe("type guards", () => {
   test("isWorkerLogMessage", () => {
-    expect(isWorkerLogMessage({ type: "log", level: "info", namespace: "test", message: "hi", timestamp: 1 })).toBe(true)
+    expect(
+      isWorkerLogMessage({
+        type: "log",
+        level: "info",
+        namespace: "test",
+        message: "hi",
+        timestamp: 1,
+      }),
+    ).toBe(true)
     expect(isWorkerLogMessage({ type: "console" })).toBe(false)
     expect(isWorkerLogMessage(null)).toBe(false)
   })
@@ -288,8 +332,23 @@ describe("type guards", () => {
   })
 
   test("isWorkerMessage", () => {
-    expect(isWorkerMessage({ type: "console", level: "log", args: [], timestamp: 1 })).toBe(true)
-    expect(isWorkerMessage({ type: "log", level: "info", namespace: "test", message: "hi", timestamp: 1 })).toBe(true)
+    expect(
+      isWorkerMessage({
+        type: "console",
+        level: "log",
+        args: [],
+        timestamp: 1,
+      }),
+    ).toBe(true)
+    expect(
+      isWorkerMessage({
+        type: "log",
+        level: "info",
+        namespace: "test",
+        message: "hi",
+        timestamp: 1,
+      }),
+    ).toBe(true)
     expect(isWorkerMessage({ type: "span", event: "start" })).toBe(true)
     expect(isWorkerMessage({ type: "unknown" })).toBe(false)
   })
@@ -360,7 +419,9 @@ describe("createWorkerLogger", () => {
     const messages: WorkerMessage[] = []
     const mockPostMessage = (msg: WorkerMessage) => messages.push(msg)
 
-    const log = createWorkerLogger(mockPostMessage, "parent", { version: "1.0" })
+    const log = createWorkerLogger(mockPostMessage, "parent", {
+      version: "1.0",
+    })
     const child = log.logger("child", { extra: true })
 
     expect(child.name).toBe("parent:child")
@@ -385,7 +446,9 @@ describe("createWorkerLogger spans", () => {
     }
 
     // Should have start and end events
-    const spanMessages = messages.filter((m) => m.type === "span") as WorkerSpanMessage[]
+    const spanMessages = messages.filter(
+      (m) => m.type === "span",
+    ) as WorkerSpanMessage[]
     expect(spanMessages).toHaveLength(2)
 
     const start = spanMessages.find((m) => m.event === "start")!
@@ -415,9 +478,15 @@ describe("createWorkerLogger spans", () => {
       }
     }
 
-    const spanMessages = messages.filter((m) => m.type === "span") as WorkerSpanMessage[]
-    const outerStart = spanMessages.find((m) => m.namespace === "test:outer" && m.event === "start")!
-    const innerStart = spanMessages.find((m) => m.namespace === "test:outer:inner" && m.event === "start")!
+    const spanMessages = messages.filter(
+      (m) => m.type === "span",
+    ) as WorkerSpanMessage[]
+    const outerStart = spanMessages.find(
+      (m) => m.namespace === "test:outer" && m.event === "start",
+    )!
+    const innerStart = spanMessages.find(
+      (m) => m.namespace === "test:outer:inner" && m.event === "start",
+    )!
 
     // Both should share the same trace ID
     expect(innerStart.traceId).toBe(outerStart.traceId)
@@ -437,7 +506,9 @@ describe("createWorkerLogger spans", () => {
       span.debug("details")
     }
 
-    const logMessages = messages.filter((m) => m.type === "log") as WorkerLogMessage[]
+    const logMessages = messages.filter(
+      (m) => m.type === "log",
+    ) as WorkerLogMessage[]
     expect(logMessages).toHaveLength(2)
     expect(logMessages[0]!.namespace).toBe("test:work")
     expect(logMessages[0]!.message).toBe("processing")
@@ -530,8 +601,12 @@ describe("full logger end-to-end", () => {
 
     // Should have log outputs and span output
     expect(consoleOutput.length).toBeGreaterThanOrEqual(4) // 3 logs + 1 span
-    expect(consoleOutput.some((o) => o.message.includes("starting work"))).toBe(true)
-    expect(consoleOutput.some((o) => o.message.includes("processing"))).toBe(true)
+    expect(consoleOutput.some((o) => o.message.includes("starting work"))).toBe(
+      true,
+    )
+    expect(consoleOutput.some((o) => o.message.includes("processing"))).toBe(
+      true,
+    )
     expect(consoleOutput.some((o) => o.message.includes("done"))).toBe(true)
   })
 })

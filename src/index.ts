@@ -196,9 +196,11 @@ function formatConsole(
   namespace: string,
   level: string,
   message: string,
-  data?: Record<string, unknown>
+  data?: Record<string, unknown>,
 ): string {
-  const time = pc.dim(new Date().toISOString().split("T")[1]?.split(".")[0] || "")
+  const time = pc.dim(
+    new Date().toISOString().split("T")[1]?.split(".")[0] || "",
+  )
 
   let levelStr = ""
   switch (level) {
@@ -236,7 +238,7 @@ function formatJSON(
   namespace: string,
   level: string,
   message: string,
-  data?: Record<string, unknown>
+  data?: Record<string, unknown>,
 ): string {
   const entry = {
     time: new Date().toISOString(),
@@ -259,7 +261,7 @@ function writeLog(
   namespace: string,
   level: OutputLogLevel,
   message: string,
-  data?: Record<string, unknown>
+  data?: Record<string, unknown>,
 ): void {
   if (!shouldLog(level)) return
 
@@ -286,7 +288,11 @@ function writeLog(
   }
 }
 
-function writeSpan(namespace: string, duration: number, attrs: Record<string, unknown>): void {
+function writeSpan(
+  namespace: string,
+  duration: number,
+  attrs: Record<string, unknown>,
+): void {
   if (!shouldTraceNamespace(namespace)) return
 
   const message = `(${duration}ms)`
@@ -315,12 +321,12 @@ function createLoggerImpl(
   props: Record<string, unknown>,
   spanMeta: MutableSpanData | null,
   parentSpanId: string | null,
-  traceId: string | null
+  traceId: string | null,
 ): Logger {
   const log = (
     level: OutputLogLevel,
     msgOrError: string | Error,
-    data?: Record<string, unknown>
+    data?: Record<string, unknown>,
   ): void => {
     if (msgOrError instanceof Error) {
       const err = msgOrError
@@ -385,7 +391,13 @@ function createLoggerImpl(
     logger(namespace?: string, childProps?: Record<string, unknown>): Logger {
       const childName = namespace ? `${name}:${namespace}` : name
       const mergedProps = { ...props, ...childProps }
-      return createLoggerImpl(childName, mergedProps, null, parentSpanId, traceId)
+      return createLoggerImpl(
+        childName,
+        mergedProps,
+        null,
+        parentSpanId,
+        traceId,
+      )
     },
 
     span(namespace?: string, childProps?: Record<string, unknown>): SpanLogger {
@@ -409,11 +421,13 @@ function createLoggerImpl(
         mergedProps,
         newSpanData,
         newSpanId,
-        newTraceId
+        newTraceId,
       ) as SpanLogger
 
       // Add disposal
-      ;(spanLogger as unknown as { [Symbol.dispose]: () => void })[Symbol.dispose] = () => {
+      ;(spanLogger as unknown as { [Symbol.dispose]: () => void })[
+        Symbol.dispose
+      ] = () => {
         if (newSpanData.endTime !== null) return // Already disposed
 
         newSpanData.endTime = Date.now()
@@ -439,7 +453,9 @@ function createLoggerImpl(
 
     end(): void {
       if (spanMeta && spanMeta.endTime === null) {
-        ;(this as unknown as { [Symbol.dispose]: () => void })[Symbol.dispose]?.()
+        ;(this as unknown as { [Symbol.dispose]: () => void })[
+          Symbol.dispose
+        ]?.()
       }
     },
   }
@@ -464,7 +480,10 @@ function createLoggerImpl(
  *   task.spanData.count = 42
  * }
  */
-export function createLogger(name: string, props?: Record<string, unknown>): Logger {
+export function createLogger(
+  name: string,
+  props?: Record<string, unknown>,
+): Logger {
   return createLoggerImpl(name, props || {}, null, null, null)
 }
 
@@ -516,7 +535,7 @@ export interface ConditionalLogger extends Logger {
  */
 export function createConditionalLogger(
   name: string,
-  props?: Record<string, unknown>
+  props?: Record<string, unknown>,
 ): ConditionalLogger {
   const baseLog = createLogger(name, props)
 
@@ -524,7 +543,9 @@ export function createConditionalLogger(
     get(target, prop: string) {
       if (prop in LOG_LEVEL_PRIORITY && prop !== "silent") {
         const current = LOG_LEVEL_PRIORITY[currentLogLevel]
-        if (LOG_LEVEL_PRIORITY[prop as keyof typeof LOG_LEVEL_PRIORITY] < current) {
+        if (
+          LOG_LEVEL_PRIORITY[prop as keyof typeof LOG_LEVEL_PRIORITY] < current
+        ) {
           return undefined
         }
       }

@@ -22,12 +22,12 @@ log.error(new Error("failed"))
 
 ## Environment Variables
 
-| Variable     | Values                              | Effect                        |
-| ------------ | ----------------------------------- | ----------------------------- |
-| LOG_LEVEL    | trace, debug, info, warn, error, silent | Filter output by level   |
-| TRACE        | 1, true, or namespace prefixes      | Enable span output            |
-| TRACE_FORMAT | json                                | Force JSON output             |
-| NODE_ENV     | production                          | Auto-enable JSON format       |
+| Variable     | Values                                  | Effect                  |
+| ------------ | --------------------------------------- | ----------------------- |
+| LOG_LEVEL    | trace, debug, info, warn, error, silent | Filter output by level  |
+| TRACE        | 1, true, or namespace prefixes          | Enable span output      |
+| TRACE_FORMAT | json                                    | Force JSON output       |
+| NODE_ENV     | production                              | Auto-enable JSON format |
 
 ### Examples
 
@@ -50,13 +50,13 @@ const log = createLogger("myapp", { version: "1.0" })
 
 ### Logger Methods
 
-| Method          | Purpose                              |
-| --------------- | ------------------------------------ |
-| `.trace(msg, data?)` | Verbose debugging               |
-| `.debug(msg, data?)` | Debug information               |
-| `.info(msg, data?)`  | Normal operation                |
-| `.warn(msg, data?)`  | Recoverable issues              |
-| `.error(msg \| Error, data?)` | Failures              |
+| Method                        | Purpose            |
+| ----------------------------- | ------------------ |
+| `.trace(msg, data?)`          | Verbose debugging  |
+| `.debug(msg, data?)`          | Debug information  |
+| `.info(msg, data?)`           | Normal operation   |
+| `.warn(msg, data?)`           | Recoverable issues |
+| `.error(msg \| Error, data?)` | Failures           |
 
 ### Child Loggers
 
@@ -80,7 +80,7 @@ Spans are loggers with timing. They implement `Disposable` for use with `using`:
 {
   using span = log.span("operation", { context: "value" })
   span.debug("step 1")
-  span.spanData.processed = 100  // Set custom attributes
+  span.spanData.processed = 100 // Set custom attributes
 }
 // On block exit: SPAN myapp:operation (15ms) {processed: 100, context: "value"}
 ```
@@ -99,32 +99,36 @@ try {
 
 ### Span Data
 
-| Property        | Type              | Description                    |
-| --------------- | ----------------- | ------------------------------ |
-| `spanData.id`   | string (readonly) | Unique span ID (sp_1, sp_2...) |
-| `spanData.traceId` | string (readonly) | Trace ID (shared across nested spans) |
-| `spanData.parentId` | string \| null (readonly) | Parent span ID |
-| `spanData.startTime` | number (readonly) | Start timestamp (ms) |
-| `spanData.duration` | number (readonly) | Live duration since start |
-| `spanData.custom` | any (writable) | Set custom attributes |
+| Property             | Type                      | Description                           |
+| -------------------- | ------------------------- | ------------------------------------- |
+| `spanData.id`        | string (readonly)         | Unique span ID (sp_1, sp_2...)        |
+| `spanData.traceId`   | string (readonly)         | Trace ID (shared across nested spans) |
+| `spanData.parentId`  | string \| null (readonly) | Parent span ID                        |
+| `spanData.startTime` | number (readonly)         | Start timestamp (ms)                  |
+| `spanData.duration`  | number (readonly)         | Live duration since start             |
+| `spanData.custom`    | any (writable)            | Set custom attributes                 |
 
 ### Configuration Functions
 
 ```typescript
 import {
-  setLogLevel, getLogLevel,
-  enableSpans, disableSpans, spansAreEnabled,
-  setTraceFilter, getTraceFilter
+  setLogLevel,
+  getLogLevel,
+  enableSpans,
+  disableSpans,
+  spansAreEnabled,
+  setTraceFilter,
+  getTraceFilter,
 } from "@beorn/logger"
 
-setLogLevel("debug")       // Set minimum level
-getLogLevel()              // Get current level: "debug"
-enableSpans()              // Enable span output
-disableSpans()             // Disable span output
-spansAreEnabled()          // Check if spans are enabled
-setTraceFilter(["myapp"])  // Only output spans for "myapp" and "myapp:*"
-setTraceFilter(null)       // Clear filter, output all spans
-getTraceFilter()           // Get current filter: ["myapp"] or null
+setLogLevel("debug") // Set minimum level
+getLogLevel() // Get current level: "debug"
+enableSpans() // Enable span output
+disableSpans() // Disable span output
+spansAreEnabled() // Check if spans are enabled
+setTraceFilter(["myapp"]) // Only output spans for "myapp" and "myapp:*"
+setTraceFilter(null) // Clear filter, output all spans
+getTraceFilter() // Get current filter: ["myapp"] or null
 ```
 
 ## Output Format
@@ -162,12 +166,12 @@ log.trace?.(`node ${node.id.slice(-8)} children=${children.length}`)
 
 **Benchmark results** (10M iterations, Bun 1.1.x):
 
-| Scenario                        | ops/s  | ns/op | Notes                           |
-| ------------------------------- | ------ | ----- | ------------------------------- |
-| noop (cheap args)               | 2168M  | 0.5   | Fastest for trivial args        |
-| `?.` (cheap args)               | 1406M  | 0.7   | ~0.2ns overhead - negligible    |
-| noop (expensive args)           | 17M    | 57.6  | Args still evaluated - wasted!  |
-| **`?.` (expensive args)**       | **408M** | **2.5** | Args NOT evaluated - **22x faster** |
+| Scenario                  | ops/s    | ns/op   | Notes                               |
+| ------------------------- | -------- | ------- | ----------------------------------- |
+| noop (cheap args)         | 2168M    | 0.5     | Fastest for trivial args            |
+| `?.` (cheap args)         | 1406M    | 0.7     | ~0.2ns overhead - negligible        |
+| noop (expensive args)     | 17M      | 57.6    | Args still evaluated - wasted!      |
+| **`?.` (expensive args)** | **408M** | **2.5** | Args NOT evaluated - **22x faster** |
 
 **Key insight**: Optional chaining is only ~0.2ns slower for cheap args, but **22x faster** for expensive args because it skips argument evaluation entirely.
 

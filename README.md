@@ -53,21 +53,21 @@ log.debug?.(`expensive: ${computeExpensiveState()}`)
 
 ### Benchmark Results
 
-| Scenario | ops/s | ns/op | Notes |
-| -------- | ----- | ----- | ----- |
-| noop (cheap args) | 2168M | 0.5 | Fastest for trivial args |
-| `?.` (cheap args) | 1406M | 0.7 | ~0.2ns overhead - negligible |
-| noop (expensive args) | 17M | 57.6 | Args still evaluated |
+| Scenario                  | ops/s    | ns/op   | Notes                               |
+| ------------------------- | -------- | ------- | ----------------------------------- |
+| noop (cheap args)         | 2168M    | 0.5     | Fastest for trivial args            |
+| `?.` (cheap args)         | 1406M    | 0.7     | ~0.2ns overhead - negligible        |
+| noop (expensive args)     | 17M      | 57.6    | Args still evaluated                |
 | **`?.` (expensive args)** | **408M** | **2.5** | Args NOT evaluated - **22x faster** |
 
 ## Environment Variables
 
-| Variable | Values | Effect |
-| -------- | ------ | ------ |
-| `LOG_LEVEL` | trace, debug, info, warn, error, silent | Filter output by level |
-| `TRACE` | 1, true, or namespace prefixes | Enable span output |
-| `TRACE_FORMAT` | json | Force JSON output |
-| `NODE_ENV` | production | Auto-enable JSON format |
+| Variable       | Values                                  | Effect                  |
+| -------------- | --------------------------------------- | ----------------------- |
+| `LOG_LEVEL`    | trace, debug, info, warn, error, silent | Filter output by level  |
+| `TRACE`        | 1, true, or namespace prefixes          | Enable span output      |
+| `TRACE_FORMAT` | json                                    | Force JSON output       |
+| `NODE_ENV`     | production                              | Auto-enable JSON format |
 
 ```bash
 LOG_LEVEL=debug bun run app         # Enable debug logging

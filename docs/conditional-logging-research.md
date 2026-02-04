@@ -77,7 +77,7 @@ The `using` keyword (Stage 3 as of June 2024) enables automatic span disposal:
 {
   using span = log.span("operation")
   span.debug("working...")
-}  // Automatically calls span[Symbol.dispose]()
+} // Automatically calls span[Symbol.dispose]()
 ```
 
 Reference: [TC39 Proposal](https://tc39.es/proposal-explicit-resource-management/)
@@ -97,19 +97,27 @@ import { createLogger, getLogLevel } from "@beorn/logger"
 
 const baseLog = createLogger("myapp")
 
-const LEVEL_PRIORITY = { trace: 0, debug: 1, info: 2, warn: 3, error: 4, silent: 5 }
+const LEVEL_PRIORITY = {
+  trace: 0,
+  debug: 1,
+  info: 2,
+  warn: 3,
+  error: 4,
+  silent: 5,
+}
 
 export const log = new Proxy(baseLog, {
   get(target, prop: string) {
     // For level methods, return undefined if disabled
     if (prop in LEVEL_PRIORITY) {
-      const current = LEVEL_PRIORITY[getLogLevel() as keyof typeof LEVEL_PRIORITY]
+      const current =
+        LEVEL_PRIORITY[getLogLevel() as keyof typeof LEVEL_PRIORITY]
       if (LEVEL_PRIORITY[prop as keyof typeof LEVEL_PRIORITY] < current) {
         return undefined
       }
     }
     return (target as any)[prop]
-  }
+  },
 })
 ```
 
@@ -121,7 +129,7 @@ type ConditionalLogger = {
   debug?: (msg: string, data?: object) => void
   info?: (msg: string, data?: object) => void
   warn?: (msg: string, data?: object) => void
-  error: (msg: string, data?: object) => void  // Always available
+  error: (msg: string, data?: object) => void // Always available
   logger: (ns?: string, props?: object) => ConditionalLogger
   span?: (ns?: string, props?: object) => SpanLogger | undefined
 }
@@ -132,6 +140,7 @@ TypeScript enforces the `?.` pattern at compile time - you can't call `log.debug
 ## Design Decision: Always Use `?.`
 
 Given the benchmark results:
+
 - Overhead of `?.` vs noop for cheap args: ~0.2ns (negligible)
 - Benefit of `?.` for expensive args: ~55ns saved (22x faster)
 

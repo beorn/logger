@@ -8,17 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - `createConditionalLogger(name, props?)` - Built-in conditional logger for optional chaining pattern
 - `setTraceFilter(namespaces)` - Programmatic trace filter for namespace-based span control
 - `getTraceFilter()` - Get current trace filter
 - Comprehensive test suite (61 tests covering all features)
 
 ### Changed
+
 - Updated documentation with full API reference
 
 ## [0.1.0] - 2026-01-15
 
 ### Added
+
 - Initial release
 - `createLogger(name, props?)` - Create structured logger
 - Logger methods: `trace`, `debug`, `info`, `warn`, `error`
