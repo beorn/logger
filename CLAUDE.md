@@ -148,18 +148,27 @@ getTraceFilter() // Get current filter: ["myapp"] or null
 {"time":"2024-01-15T14:32:16.456Z","level":"span","name":"myapp:import","msg":"(1234ms)","duration":1234,"count":42}
 ```
 
-## Conditional Logging (TUI Pattern)
+## Zero-Overhead Pattern (Optional Chaining)
 
-For performance-critical code, use `createConditionalLogger` which returns `undefined` for disabled levels:
+`createLogger` returns `undefined` for disabled log levels, enabling zero-overhead logging.
+
+**Log levels** (most → least verbose): `trace < debug < info < warn < error < silent`
+**Default level**: `info` (trace and debug disabled)
 
 ```typescript
-import { createConditionalLogger } from "@beorn/logger"
+import { createLogger } from "@beorn/logger"
 
-const log = createConditionalLogger("km:tui")
+const log = createLogger("km:tui")
 
-// Usage with optional chaining - skips argument evaluation when disabled
-log.debug?.(`expensive: ${computeExpensiveState()}`)
-log.trace?.(`node ${node.id.slice(-8)} children=${children.length}`)
+// All methods support ?. for zero-overhead when their level is disabled
+log.trace?.(`very verbose: ${expensiveDebug()}`)  // Skipped at default (info)
+log.debug?.(`state: ${getState()}`)               // Skipped at default (info)
+log.info?.("starting")                            // Enabled at default
+log.warn?.("deprecated")                          // Enabled at default
+log.error?.("failed")                             // Enabled at default
+
+// With -q flag or LOG_LEVEL=warn, info is also skipped:
+log.info?.("starting")  // Skipped when level=warn
 ```
 
 ### Why optional chaining?

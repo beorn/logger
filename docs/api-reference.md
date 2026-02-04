@@ -8,7 +8,7 @@ Complete API documentation for @beorn/logger.
 - [Logger Interface](#logger-interface)
 - [SpanLogger Interface](#spanlogger-interface)
 - [Configuration Functions](#configuration-functions)
-- [Conditional Logging](#conditional-logging)
+- [Zero-Overhead Logging](#zero-overhead-logging)
 - [Types](#types)
 - [Span Collection](#span-collection)
 
@@ -17,10 +17,13 @@ Complete API documentation for @beorn/logger.
 ## createLogger
 
 ```typescript
-function createLogger(name: string, props?: Record<string, unknown>): Logger
+function createLogger(
+  name: string,
+  props?: Record<string, unknown>,
+): ConditionalLogger
 ```
 
-Create a logger for a component.
+Create a logger for a component. Returns a conditional logger where disabled log levels return `undefined` - use optional chaining (`?.`) to skip argument evaluation.
 
 ### Parameters
 
@@ -31,7 +34,7 @@ Create a logger for a component.
 
 ### Returns
 
-`Logger` - A logger instance.
+`ConditionalLogger` - A logger where disabled levels return `undefined`.
 
 ### Examples
 
@@ -380,9 +383,9 @@ const filter = getTraceFilter() // ['myapp'] or null
 
 ---
 
-## Conditional Logging
+## Zero-Overhead Logging
 
-For performance-critical code, use a Proxy wrapper that returns `undefined` for disabled levels. This allows optional chaining (`?.`) to skip argument evaluation entirely.
+`createLogger` returns a `ConditionalLogger` that returns `undefined` for disabled levels. This allows optional chaining (`?.`) to skip argument evaluation entirely.
 
 ### ConditionalLogger Type
 
@@ -405,33 +408,27 @@ type ConditionalLogger = {
 }
 ```
 
-### createConditionalLogger
+### Usage with Optional Chaining
 
 ```typescript
-function createConditionalLogger(
-  name: string,
-  props?: Record<string, unknown>,
-): ConditionalLogger
-```
+import { createLogger } from "@beorn/logger"
 
-Create a conditional logger that returns `undefined` for disabled levels. Use with optional chaining to skip argument evaluation.
+const log = createLogger("myapp")
 
-```typescript
-import { createConditionalLogger } from "@beorn/logger"
+// Info/warn/error always enabled at default level - safe without ?.
+log.info("starting")
 
-const log = createConditionalLogger("myapp")
-
-// These skip argument evaluation entirely when disabled
+// Debug/trace use optional chaining - skips argument evaluation when disabled
 log.debug?.(`expensive: ${computeExpensiveState()}`)
-log.trace?.(`node ${node.id}`)
+log.trace?.(`node ${node.id.slice(-8)} children=${children.length}`)
 ```
 
-The conditional logger responds dynamically to log level changes:
+The logger responds dynamically to log level changes:
 
 ```typescript
-import { createConditionalLogger, setLogLevel } from "@beorn/logger"
+import { createLogger, setLogLevel } from "@beorn/logger"
 
-const log = createConditionalLogger("myapp")
+const log = createLogger("myapp")
 
 setLogLevel("error")
 log.debug // undefined
@@ -440,17 +437,14 @@ setLogLevel("debug")
 log.debug // function
 ```
 
-### Usage with Optional Chaining
+### createConditionalLogger (Deprecated)
 
 ```typescript
-// These skip argument evaluation entirely when the level is disabled
-log.debug?.(`expensive: ${computeExpensiveState()}`)
-log.trace?.(`node ${node.id.slice(-8)} children=${children.length}`)
-
-// Standard calls (arguments always evaluated)
-log.info("starting") // Always evaluate args
-log.error(err) // Always evaluate args
+/** @deprecated Use createLogger() instead */
+export const createConditionalLogger = createLogger
 ```
+
+The deprecated `createConditionalLogger` is an alias for `createLogger`. Existing code will continue to work, but new code should use `createLogger` directly.
 
 ### Performance Benefits
 

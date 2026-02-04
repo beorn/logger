@@ -464,23 +464,10 @@ function createLoggerImpl(
 }
 
 /**
- * Create a logger for a component
- *
- * @example
- * const log = createLogger('myapp')
- * log.info('starting')
- *
- * // With initial props
- * const log = createLogger('myapp', { version: '1.0' })
- *
- * // Create spans
- * {
- *   using task = log.span('import', { file: 'data.csv' })
- *   task.info('importing')
- *   task.spanData.count = 42
- * }
+ * Create a plain logger for a component (internal use).
+ * For application code, use createLogger() instead which returns undefined for disabled levels.
  */
-export function createLogger(
+function createPlainLogger(
   name: string,
   props?: Record<string, unknown>,
 ): Logger {
@@ -514,7 +501,7 @@ export function clearCollectedSpans(): void {
   collectedSpans.length = 0
 }
 
-// ============ Conditional Logger (TUI Pattern) ============
+// ============ Conditional Logger (Zero-Overhead Pattern) ============
 
 /** Logger with optional methods - returns undefined for disabled levels */
 export type ConditionalLogger = Omit<
@@ -529,18 +516,40 @@ export type ConditionalLogger = Omit<
 }
 
 /**
- * Create a conditional logger that returns undefined for disabled levels.
- * Use with optional chaining to skip argument evaluation for disabled levels.
+ * Create a logger for a component.
+ * Returns undefined for disabled levels - use with optional chaining for zero overhead.
+ *
+ * Log levels (most → least verbose): trace < debug < info < warn < error < silent
+ * Default level: info (trace and debug disabled)
  *
  * @example
- * const log = createConditionalLogger('myapp')
- * log.debug?.(`expensive: ${computeExpensiveState()}`)  // Skips if debug disabled
+ * const log = createLogger('myapp')
+ *
+ * // All methods support ?. for zero-overhead when disabled
+ * log.trace?.(`very verbose: ${expensiveDebug()}`)  // Skipped at info level
+ * log.debug?.(`debug: ${getState()}`)               // Skipped at info level
+ * log.info?.('starting')                            // Enabled at info level
+ * log.warn?.('deprecated')                          // Enabled at info level
+ * log.error?.('failed')                             // Enabled at info level
+ *
+ * // With -q flag or LOG_LEVEL=warn:
+ * log.info?.('starting')  // Now skipped - info < warn
+ *
+ * // With initial props
+ * const log = createLogger('myapp', { version: '1.0' })
+ *
+ * // Create spans
+ * {
+ *   using task = log.span('import', { file: 'data.csv' })
+ *   task.info?.('importing')
+ *   task.spanData.count = 42
+ * }
  */
-export function createConditionalLogger(
+export function createLogger(
   name: string,
   props?: Record<string, unknown>,
 ): ConditionalLogger {
-  const baseLog = createLogger(name, props)
+  const baseLog = createPlainLogger(name, props)
 
   return new Proxy(baseLog as ConditionalLogger, {
     get(target, prop: string) {
@@ -556,3 +565,9 @@ export function createConditionalLogger(
     },
   })
 }
+
+/** @deprecated Use createLogger() instead */
+export const createConditionalLogger = createLogger
+
+/** Lowercase alias for consistency with common naming conventions */
+export const createlogger = createLogger

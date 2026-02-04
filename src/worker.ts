@@ -43,6 +43,7 @@
 import {
   createLogger,
   enableSpans,
+  type ConditionalLogger,
   type Logger,
   type SpanLogger,
   type SpanData,
@@ -534,14 +535,16 @@ export interface WorkerConsoleHandlerOptions {
 export function createWorkerConsoleHandler(
   options: WorkerConsoleHandlerOptions = {},
 ): (message: WorkerConsoleMessage) => void {
-  const loggers = new Map<string, Logger>()
+  const loggers = new Map<string, ConditionalLogger>()
 
-  function getLogger(namespace?: string): Logger {
+  function getLogger(namespace?: string): ConditionalLogger {
     const ns = namespace || options.defaultNamespace || "worker"
 
     let logger = loggers.get(ns)
     if (!logger) {
-      logger = options.logger || createLogger(ns)
+      logger = options.logger
+        ? (options.logger as ConditionalLogger)
+        : createLogger(ns)
       loggers.set(ns, logger)
     }
     return logger
@@ -571,23 +574,23 @@ export function createWorkerConsoleHandler(
         ? (lastArg as Record<string, unknown>)
         : undefined
 
-    // Log at the appropriate level
+    // Log at the appropriate level (use ?. since level might be disabled)
     switch (message.level) {
       case "trace":
-        logger.trace(formattedMessage, data)
+        logger.trace?.(formattedMessage, data)
         break
       case "debug":
-        logger.debug(formattedMessage, data)
+        logger.debug?.(formattedMessage, data)
         break
       case "info":
       case "log":
-        logger.info(formattedMessage, data)
+        logger.info?.(formattedMessage, data)
         break
       case "warn":
-        logger.warn(formattedMessage, data)
+        logger.warn?.(formattedMessage, data)
         break
       case "error":
-        logger.error(formattedMessage, data)
+        logger.error?.(formattedMessage, data)
         break
     }
   }
@@ -627,14 +630,14 @@ export interface WorkerLogHandlerOptions {
 export function createWorkerLogHandler(
   options: WorkerLogHandlerOptions = {},
 ): (message: WorkerMessage) => void {
-  const loggers = new Map<string, Logger>()
+  const loggers = new Map<string, ConditionalLogger>()
 
   // Enable spans if requested
   if (options.enableSpans) {
     enableSpans()
   }
 
-  function getLogger(namespace: string): Logger {
+  function getLogger(namespace: string): ConditionalLogger {
     let logger = loggers.get(namespace)
     if (!logger) {
       logger = createLogger(namespace)
@@ -666,43 +669,45 @@ export function createWorkerLogHandler(
           ? (lastArg as Record<string, unknown>)
           : undefined
 
+      // Use ?. since level might be disabled
       switch (message.level) {
         case "trace":
-          logger.trace(formattedMessage, data)
+          logger.trace?.(formattedMessage, data)
           break
         case "debug":
-          logger.debug(formattedMessage, data)
+          logger.debug?.(formattedMessage, data)
           break
         case "info":
         case "log":
-          logger.info(formattedMessage, data)
+          logger.info?.(formattedMessage, data)
           break
         case "warn":
-          logger.warn(formattedMessage, data)
+          logger.warn?.(formattedMessage, data)
           break
         case "error":
-          logger.error(formattedMessage, data)
+          logger.error?.(formattedMessage, data)
           break
       }
     } else if (isWorkerLogMessage(message)) {
       // Handle structured log messages
       const logger = getLogger(message.namespace)
 
+      // Use ?. since level might be disabled
       switch (message.level) {
         case "trace":
-          logger.trace(message.message, message.data)
+          logger.trace?.(message.message, message.data)
           break
         case "debug":
-          logger.debug(message.message, message.data)
+          logger.debug?.(message.message, message.data)
           break
         case "info":
-          logger.info(message.message, message.data)
+          logger.info?.(message.message, message.data)
           break
         case "warn":
-          logger.warn(message.message, message.data)
+          logger.warn?.(message.message, message.data)
           break
         case "error":
-          logger.error(message.message, message.data)
+          logger.error?.(message.message, message.data)
           break
       }
     } else if (isWorkerSpanMessage(message)) {

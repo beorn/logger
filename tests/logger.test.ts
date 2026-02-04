@@ -7,7 +7,7 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest"
 import {
   createLogger,
-  createConditionalLogger,
+  createlogger,
   enableSpans,
   disableSpans,
   setLogLevel,
@@ -21,29 +21,45 @@ import {
   type ConditionalLogger,
 } from "../src/index.ts"
 
-// Capture console output
-let consoleOutput: { level: string; message: string }[] = []
+// ─────────────────────────────────────────────────────────────────────────────
+// Test Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface CapturedLog {
+  level: string
+  message: string
+}
+
+/** Create a mock console that captures output */
+function createConsoleMock() {
+  const output: CapturedLog[] = []
+  const capture =
+    (level: string) =>
+    (msg: unknown): void => {
+      output.push({ level, message: String(msg) })
+    }
+
+  vi.spyOn(console, "debug").mockImplementation(capture("debug"))
+  vi.spyOn(console, "info").mockImplementation(capture("info"))
+  vi.spyOn(console, "warn").mockImplementation(capture("warn"))
+  vi.spyOn(console, "error").mockImplementation(capture("error"))
+
+  return {
+    output,
+    findSpan: () => output.find((o) => o.message.includes("SPAN")),
+    findSpans: () => output.filter((o) => o.message.includes("SPAN")),
+  }
+}
+
+// Console mock instance for all tests
+let consoleMock: ReturnType<typeof createConsoleMock>
 
 beforeEach(() => {
-  consoleOutput = []
   resetIds()
   setLogLevel("trace") // Enable all levels
   disableSpans() // Start with spans disabled
   setTraceFilter(null) // Clear any trace filter
-
-  // Mock console methods
-  vi.spyOn(console, "debug").mockImplementation((msg) => {
-    consoleOutput.push({ level: "debug", message: String(msg) })
-  })
-  vi.spyOn(console, "info").mockImplementation((msg) => {
-    consoleOutput.push({ level: "info", message: String(msg) })
-  })
-  vi.spyOn(console, "warn").mockImplementation((msg) => {
-    consoleOutput.push({ level: "warn", message: String(msg) })
-  })
-  vi.spyOn(console, "error").mockImplementation((msg) => {
-    consoleOutput.push({ level: "error", message: String(msg) })
-  })
+  consoleMock = createConsoleMock()
 })
 
 afterEach(() => {
@@ -76,50 +92,57 @@ describe("createLogger", () => {
 })
 
 describe("logging methods", () => {
-  test("logs at each level", () => {
+  // Test all log levels with their expected console method
+  test.each([
+    ["trace", "debug"], // trace uses console.debug
+    ["debug", "debug"],
+    ["info", "info"],
+    ["warn", "warn"],
+    ["error", "error"],
+  ] as const)("%s level uses console.%s", (logLevel, consoleMethod) => {
     const log = createLogger("test")
+    log[logLevel](`${logLevel} message`)
 
-    log.trace("trace message")
-    log.debug("debug message")
-    log.info("info message")
-    log.warn("warn message")
-    log.error("error message")
-
-    expect(consoleOutput).toHaveLength(5)
-    expect(consoleOutput[0]!.level).toBe("debug") // trace uses console.debug
-    expect(consoleOutput[1]!.level).toBe("debug")
-    expect(consoleOutput[2]!.level).toBe("info")
-    expect(consoleOutput[3]!.level).toBe("warn")
-    expect(consoleOutput[4]!.level).toBe("error")
+    expect(consoleMock.output).toHaveLength(1)
+    expect(consoleMock.output[0]!.level).toBe(consoleMethod)
   })
 
   test("includes data in output", () => {
     const log = createLogger("test")
     log.info("message", { key: "value" })
 
-    expect(consoleOutput[0]!.message).toContain("key")
-    expect(consoleOutput[0]!.message).toContain("value")
+    expect(consoleMock.output[0]!.message).toContain("key")
+    expect(consoleMock.output[0]!.message).toContain("value")
   })
 
   test("inherits props in output", () => {
     const log = createLogger("test", { app: "myapp" })
     log.info("message")
 
-    expect(consoleOutput[0]!.message).toContain("app")
-    expect(consoleOutput[0]!.message).toContain("myapp")
+    expect(consoleMock.output[0]!.message).toContain("app")
+    expect(consoleMock.output[0]!.message).toContain("myapp")
   })
 
-  test("respects log level filtering", () => {
-    setLogLevel("warn")
-    const log = createLogger("test")
+  // Test log level filtering - levels below threshold are filtered out
+  // Note: createLogger returns ConditionalLogger where disabled levels are undefined
+  test.each([
+    ["warn", ["warn", "error"], 2],
+    ["error", ["error"], 1],
+    ["info", ["info", "warn", "error"], 3],
+  ] as const)(
+    "setLogLevel(%s) filters to %j",
+    (threshold, expectedLevels, expectedCount) => {
+      setLogLevel(threshold)
+      const log = createLogger("test")
 
-    log.debug("should not appear")
-    log.info("should not appear")
-    log.warn("should appear")
-    log.error("should appear")
+      log.debug?.("d")
+      log.info?.("i")
+      log.warn?.("w")
+      log.error?.("e")
 
-    expect(consoleOutput).toHaveLength(2)
-  })
+      expect(consoleMock.output).toHaveLength(expectedCount)
+    },
+  )
 
   test("error accepts Error object", () => {
     const log = createLogger("test")
@@ -127,8 +150,8 @@ describe("logging methods", () => {
 
     log.error(err)
 
-    expect(consoleOutput[0]!.message).toContain("Something went wrong")
-    expect(consoleOutput[0]!.message).toContain("error_type")
+    expect(consoleMock.output[0]!.message).toContain("Something went wrong")
+    expect(consoleMock.output[0]!.message).toContain("error_type")
   })
 })
 
@@ -232,8 +255,7 @@ describe("spans", () => {
       span.spanData.count = 42
     }
 
-    // Span event should be emitted
-    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    const spanOutput = consoleMock.findSpan()
     expect(spanOutput).toBeDefined()
     expect(spanOutput!.message).toContain("app:import")
   })
@@ -287,7 +309,7 @@ describe("spans", () => {
       span.spanData.count = 42
     }
 
-    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    const spanOutput = consoleMock.findSpan()
     expect(spanOutput!.message).toContain("file")
     expect(spanOutput!.message).toContain("count")
     expect(spanOutput!.message).toContain("42")
@@ -304,8 +326,8 @@ describe("span output control", () => {
     }
 
     // Only the info log, no span
-    expect(consoleOutput).toHaveLength(1)
-    expect(consoleOutput[0]!.message).not.toContain("SPAN")
+    expect(consoleMock.output).toHaveLength(1)
+    expect(consoleMock.output[0]!.message).not.toContain("SPAN")
   })
 
   test("enableSpans() enables span output", () => {
@@ -316,8 +338,7 @@ describe("span output control", () => {
       using span = log.span("import")
     }
 
-    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
-    expect(spanOutput).toBeDefined()
+    expect(consoleMock.findSpan()).toBeDefined()
   })
 
   test("disableSpans() disables span output", () => {
@@ -329,41 +350,13 @@ describe("span output control", () => {
       using span = log.span("import")
     }
 
-    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
-    expect(spanOutput).toBeUndefined()
+    expect(consoleMock.findSpan()).toBeUndefined()
   })
 })
 
 describe("console method usage (patchConsole compatibility)", () => {
-  test("trace/debug use console.debug", () => {
-    const log = createLogger("test")
-    log.trace("t")
-    log.debug("d")
-
-    expect(consoleOutput[0]!.level).toBe("debug")
-    expect(consoleOutput[1]!.level).toBe("debug")
-  })
-
-  test("info uses console.info", () => {
-    const log = createLogger("test")
-    log.info("i")
-
-    expect(consoleOutput[0]!.level).toBe("info")
-  })
-
-  test("warn uses console.warn", () => {
-    const log = createLogger("test")
-    log.warn("w")
-
-    expect(consoleOutput[0]!.level).toBe("warn")
-  })
-
-  test("error uses console.error", () => {
-    const log = createLogger("test")
-    log.error("e")
-
-    expect(consoleOutput[0]!.level).toBe("error")
-  })
+  // Consolidated: log level -> console method mapping (covered above in logging methods)
+  // This describe block focuses on patchConsole-specific behavior
 
   test("span output uses console.error (for stderr)", () => {
     enableSpans()
@@ -373,81 +366,83 @@ describe("console method usage (patchConsole compatibility)", () => {
       using span = log.span("work")
     }
 
-    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    const spanOutput = consoleMock.findSpan()
     expect(spanOutput!.level).toBe("error") // Spans go to stderr via console.error
   })
 })
 
-describe("createConditionalLogger", () => {
-  test("returns log methods when level is enabled", () => {
-    setLogLevel("debug")
-    const log = createConditionalLogger("test")
+describe("createlogger", () => {
+  // Test enabled/disabled levels with parameterized tests
+  test.each([
+    [
+      "trace",
+      { trace: true, debug: true, info: true, warn: true, error: true },
+    ],
+    [
+      "debug",
+      { trace: false, debug: true, info: true, warn: true, error: true },
+    ],
+    [
+      "warn",
+      { trace: false, debug: false, info: false, warn: true, error: true },
+    ],
+    [
+      "error",
+      { trace: false, debug: false, info: false, warn: false, error: true },
+    ],
+  ] as const)("at level %s, methods defined: %o", (level, expected) => {
+    setLogLevel(level)
+    const log = createlogger("test")
 
-    expect(log.debug).toBeDefined()
-    expect(log.info).toBeDefined()
-    expect(log.warn).toBeDefined()
-    expect(log.error).toBeDefined()
-  })
-
-  test("returns undefined for disabled levels", () => {
-    setLogLevel("warn")
-    const log = createConditionalLogger("test")
-
-    expect(log.trace).toBeUndefined()
-    expect(log.debug).toBeUndefined()
-    expect(log.info).toBeUndefined()
-    expect(log.warn).toBeDefined()
-    expect(log.error).toBeDefined()
+    expect(log.trace !== undefined).toBe(expected.trace)
+    expect(log.debug !== undefined).toBe(expected.debug)
+    expect(log.info !== undefined).toBe(expected.info)
+    expect(log.warn !== undefined).toBe(expected.warn)
+    expect(log.error !== undefined).toBe(expected.error)
   })
 
   test("optional chaining skips call when disabled", () => {
     setLogLevel("error")
-    const log = createConditionalLogger("test")
+    const log = createlogger("test")
 
-    // These should not throw, just return undefined
     log.debug?.("should not log")
     log.info?.("should not log")
     log.warn?.("should not log")
 
-    expect(consoleOutput).toHaveLength(0)
+    expect(consoleMock.output).toHaveLength(0)
   })
 
   test("optional chaining calls method when enabled", () => {
     setLogLevel("debug")
-    const log = createConditionalLogger("test")
+    const log = createlogger("test")
 
     log.debug?.("should log")
 
-    expect(consoleOutput).toHaveLength(1)
-    expect(consoleOutput[0]!.message).toContain("should log")
+    expect(consoleMock.output).toHaveLength(1)
+    expect(consoleMock.output[0]!.message).toContain("should log")
   })
 
   test("inherits props from base logger", () => {
     setLogLevel("info")
-    const log = createConditionalLogger("test", { version: "1.0" })
+    const log = createlogger("test", { version: "1.0" })
 
     expect(log.props).toEqual({ version: "1.0" })
   })
 
-  test("can create child loggers", () => {
+  test("can create child loggers and spans", () => {
     setLogLevel("info")
-    const log = createConditionalLogger("test")
+    const log = createlogger("test")
+
     const child = log.logger("child")
-
     expect(child.name).toBe("test:child")
-  })
 
-  test("can create spans", () => {
-    setLogLevel("info")
-    const log = createConditionalLogger("test")
     const span = log.span("work")
-
     expect(span.spanData).not.toBeNull()
     span.end()
   })
 
   test("responds to log level changes", () => {
-    const log = createConditionalLogger("test")
+    const log = createlogger("test")
 
     setLogLevel("error")
     expect(log.debug).toBeUndefined()
@@ -508,7 +503,7 @@ describe("JSON format output", () => {
 
     log.info("test message", { key: "value" })
 
-    const output = consoleOutput[0]!.message
+    const output = consoleMock.output[0]!.message
     const parsed = JSON.parse(output)
     expect(parsed.level).toBe("info")
     expect(parsed.name).toBe("test")
@@ -524,7 +519,7 @@ describe("JSON format output", () => {
 
     log.info("prod message")
 
-    const output = consoleOutput[0]!.message
+    const output = consoleMock.output[0]!.message
     const parsed = JSON.parse(output)
     expect(parsed.level).toBe("info")
     expect(parsed.msg).toBe("prod message")
@@ -536,7 +531,7 @@ describe("JSON format output", () => {
 
     log.info("message")
 
-    const output = consoleOutput[0]!.message
+    const output = consoleMock.output[0]!.message
     const parsed = JSON.parse(output)
     expect(parsed.app).toBe("myapp")
     expect(parsed.version).toBe("1.0")
@@ -549,7 +544,7 @@ describe("JSON format output", () => {
 
     log.error(err)
 
-    const output = consoleOutput[0]!.message
+    const output = consoleMock.output[0]!.message
     const parsed = JSON.parse(output)
     expect(parsed.msg).toBe("test error")
     expect(parsed.error_type).toBe("Error")
@@ -566,7 +561,7 @@ describe("JSON format output", () => {
       span.spanData.count = 42
     }
 
-    const spanOutput = consoleOutput.find((o) => {
+    const spanOutput = consoleMock.output.find((o) => {
       try {
         const parsed = JSON.parse(o.message)
         return parsed.level === "span"
@@ -592,7 +587,7 @@ describe("JSON format output", () => {
 
     log.info("circular", circular)
 
-    const output = consoleOutput[0]!.message
+    const output = consoleMock.output[0]!.message
     // Should not throw, should contain [Circular]
     expect(output).toContain("[Circular]")
   })
@@ -604,30 +599,28 @@ describe("console format output", () => {
     log.info("message")
 
     // Format: HH:MM:SS
-    expect(consoleOutput[0]!.message).toMatch(/\d{2}:\d{2}:\d{2}/)
+    expect(consoleMock.output[0]!.message).toMatch(/\d{2}:\d{2}:\d{2}/)
   })
 
-  test("includes level label", () => {
+  // Test level labels in console output
+  test.each([
+    ["trace", "TRACE"],
+    ["debug", "DEBUG"],
+    ["info", "INFO"],
+    ["warn", "WARN"],
+    ["error", "ERROR"],
+  ] as const)("%s level outputs %s label", (method, label) => {
     const log = createLogger("test")
+    log[method]("msg")
 
-    log.trace("t")
-    log.debug("d")
-    log.info("i")
-    log.warn("w")
-    log.error("e")
-
-    expect(consoleOutput[0]!.message).toContain("TRACE")
-    expect(consoleOutput[1]!.message).toContain("DEBUG")
-    expect(consoleOutput[2]!.message).toContain("INFO")
-    expect(consoleOutput[3]!.message).toContain("WARN")
-    expect(consoleOutput[4]!.message).toContain("ERROR")
+    expect(consoleMock.output[0]!.message).toContain(label)
   })
 
   test("includes namespace", () => {
     const log = createLogger("myapp")
     log.info("message")
 
-    expect(consoleOutput[0]!.message).toContain("myapp")
+    expect(consoleMock.output[0]!.message).toContain("myapp")
   })
 
   test("span format includes SPAN label and duration", () => {
@@ -638,7 +631,7 @@ describe("console format output", () => {
       using span = log.span("work")
     }
 
-    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
+    const spanOutput = consoleMock.findSpan()
     expect(spanOutput).toBeDefined()
     expect(spanOutput!.message).toMatch(/\(\d+ms\)/)
   })
@@ -652,19 +645,16 @@ describe("TRACE namespace filtering", () => {
     expect(getTraceFilter()).toEqual(["myapp"])
   })
 
-  test("setTraceFilter(null) clears filter", () => {
-    setTraceFilter(["myapp"])
-    setTraceFilter(null)
+  // Test that setTraceFilter clears filter (but doesn't disable spans)
+  test.each([[null], [[]]] as const)(
+    "setTraceFilter(%j) clears filter",
+    (filter) => {
+      setTraceFilter(["myapp"])
+      setTraceFilter(filter)
 
-    expect(getTraceFilter()).toBeNull()
-  })
-
-  test("setTraceFilter([]) clears filter", () => {
-    setTraceFilter(["myapp"])
-    setTraceFilter([])
-
-    expect(getTraceFilter()).toBeNull()
-  })
+      expect(getTraceFilter()).toBeNull()
+    },
+  )
 
   test("filter allows exact namespace match", () => {
     setTraceFilter(["myapp"])
@@ -674,8 +664,7 @@ describe("TRACE namespace filtering", () => {
       using span = log.span("work")
     }
 
-    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
-    expect(spanOutput).toBeDefined()
+    expect(consoleMock.findSpan()).toBeDefined()
   })
 
   test("filter allows child namespace match", () => {
@@ -686,8 +675,7 @@ describe("TRACE namespace filtering", () => {
       using span = log.span("import") // myapp:import
     }
 
-    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
-    expect(spanOutput).toBeDefined()
+    expect(consoleMock.findSpan()).toBeDefined()
   })
 
   test("filter blocks non-matching namespace", () => {
@@ -698,8 +686,7 @@ describe("TRACE namespace filtering", () => {
       using span = log.span("work")
     }
 
-    const spanOutput = consoleOutput.find((o) => o.message.includes("SPAN"))
-    expect(spanOutput).toBeUndefined()
+    expect(consoleMock.findSpan()).toBeUndefined()
   })
 
   test("filter supports multiple namespaces", () => {
@@ -719,7 +706,7 @@ describe("TRACE namespace filtering", () => {
       using span = log3.span("work")
     }
 
-    const spanOutputs = consoleOutput.filter((o) => o.message.includes("SPAN"))
+    const spanOutputs = consoleMock.findSpans()
     expect(spanOutputs).toHaveLength(2)
     expect(spanOutputs[0]!.message).toContain("myapp")
     expect(spanOutputs[1]!.message).toContain("other")
@@ -732,8 +719,8 @@ describe("TRACE namespace filtering", () => {
     log.info("regular log")
 
     // Regular logs still appear
-    expect(consoleOutput).toHaveLength(1)
-    expect(consoleOutput[0]!.message).toContain("regular log")
+    expect(consoleMock.output).toHaveLength(1)
+    expect(consoleMock.output[0]!.message).toContain("regular log")
   })
 
   test("no filter when spans enabled without setTraceFilter", () => {
@@ -750,7 +737,6 @@ describe("TRACE namespace filtering", () => {
     }
 
     // Both should appear
-    const spanOutputs = consoleOutput.filter((o) => o.message.includes("SPAN"))
-    expect(spanOutputs).toHaveLength(2)
+    expect(consoleMock.findSpans()).toHaveLength(2)
   })
 })

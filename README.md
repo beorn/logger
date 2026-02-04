@@ -38,16 +38,19 @@ log.error(new Error("failed"))
 - **Environment control** - Configure via `LOG_LEVEL`, `TRACE`, `TRACE_FORMAT`
 - **Dual output** - Pretty console in dev, JSON in production
 
-## Conditional Logging
+## Zero-Overhead Logging
 
-Use `createConditionalLogger` with optional chaining to skip expensive argument evaluation:
+`createLogger` returns `undefined` for disabled levels. Use optional chaining to skip expensive argument evaluation:
 
 ```typescript
-import { createConditionalLogger } from "@beorn/logger"
+import { createLogger } from "@beorn/logger"
 
-const log = createConditionalLogger("myapp")
+const log = createLogger("myapp")
 
-// Args NOT evaluated when debug is disabled - 22x faster for expensive args
+// Info/warn/error always enabled at default level
+log.info("starting")
+
+// Debug/trace use optional chaining - args NOT evaluated when disabled
 log.debug?.(`expensive: ${computeExpensiveState()}`)
 ```
 
