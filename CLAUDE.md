@@ -161,14 +161,14 @@ import { createLogger } from "@beorn/logger"
 const log = createLogger("km:tui")
 
 // All methods support ?. for zero-overhead when their level is disabled
-log.trace?.(`very verbose: ${expensiveDebug()}`)  // Skipped at default (warn)
-log.debug?.(`state: ${getState()}`)               // Skipped at default (warn)
-log.info?.("starting")                            // Skipped at default (warn)
-log.warn?.("deprecated")                          // Enabled at default (warn)
-log.error?.("failed")                             // Enabled at default
+log.trace?.(`very verbose: ${expensiveDebug()}`) // Skipped at default (warn)
+log.debug?.(`state: ${getState()}`) // Skipped at default (warn)
+log.info?.("starting") // Skipped at default (warn)
+log.warn?.("deprecated") // Enabled at default (warn)
+log.error?.("failed") // Enabled at default
 
 // With -v flag or LOG_LEVEL=info, info is enabled:
-log.info?.("starting")  // Enabled when level=info
+log.info?.("starting") // Enabled when level=info
 ```
 
 ### Why optional chaining?
