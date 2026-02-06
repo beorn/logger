@@ -503,16 +503,30 @@ export function clearCollectedSpans(): void {
 
 // ============ Conditional Logger (Zero-Overhead Pattern) ============
 
-/** Logger with optional methods - returns undefined for disabled levels */
-export type ConditionalLogger = Omit<
-  Logger,
-  "trace" | "debug" | "info" | "warn" | "error"
-> & {
-  trace?: Logger["trace"]
-  debug?: Logger["debug"]
-  info?: Logger["info"]
-  warn?: Logger["warn"]
-  error?: Logger["error"]
+/**
+ * Logger with optional methods — returns undefined for disabled levels.
+ * Use with optional chaining: `log.debug?.("msg")` for zero-overhead when disabled.
+ *
+ * Defined as an explicit interface (not Omit<Logger,...>) so that
+ * oxlint's type-aware mode can resolve it without advanced type inference.
+ */
+export interface ConditionalLogger {
+  readonly name: string
+  readonly props: Readonly<Record<string, unknown>>
+  readonly spanData: SpanData | null
+
+  trace?: (message: string, data?: Record<string, unknown>) => void
+  debug?: (message: string, data?: Record<string, unknown>) => void
+  info?: (message: string, data?: Record<string, unknown>) => void
+  warn?: (message: string, data?: Record<string, unknown>) => void
+  error?: {
+    (message: string, data?: Record<string, unknown>): void
+    (error: Error, data?: Record<string, unknown>): void
+  }
+
+  logger(namespace?: string, props?: Record<string, unknown>): Logger
+  span(namespace?: string, props?: Record<string, unknown>): SpanLogger
+  end(): void
 }
 
 /**
