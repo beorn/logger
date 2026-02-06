@@ -7,7 +7,6 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest"
 import {
   createLogger,
-  createlogger,
   enableSpans,
   disableSpans,
   setLogLevel,
@@ -371,7 +370,7 @@ describe("console method usage (patchConsole compatibility)", () => {
   })
 })
 
-describe("createlogger", () => {
+describe("createLogger", () => {
   // Test enabled/disabled levels with parameterized tests
   test.each([
     [
@@ -392,7 +391,7 @@ describe("createlogger", () => {
     ],
   ] as const)("at level %s, methods defined: %o", (level, expected) => {
     setLogLevel(level)
-    const log = createlogger("test")
+    const log = createLogger("test")
 
     expect(log.trace !== undefined).toBe(expected.trace)
     expect(log.debug !== undefined).toBe(expected.debug)
@@ -403,7 +402,7 @@ describe("createlogger", () => {
 
   test("optional chaining skips call when disabled", () => {
     setLogLevel("error")
-    const log = createlogger("test")
+    const log = createLogger("test")
 
     log.debug?.("should not log")
     log.info?.("should not log")
@@ -414,7 +413,7 @@ describe("createlogger", () => {
 
   test("optional chaining calls method when enabled", () => {
     setLogLevel("debug")
-    const log = createlogger("test")
+    const log = createLogger("test")
 
     log.debug?.("should log")
 
@@ -424,14 +423,14 @@ describe("createlogger", () => {
 
   test("inherits props from base logger", () => {
     setLogLevel("info")
-    const log = createlogger("test", { version: "1.0" })
+    const log = createLogger("test", { version: "1.0" })
 
     expect(log.props).toEqual({ version: "1.0" })
   })
 
   test("can create child loggers and spans", () => {
     setLogLevel("info")
-    const log = createlogger("test")
+    const log = createLogger("test")
 
     const child = log.logger("child")
     expect(child.name).toBe("test:child")
@@ -442,7 +441,7 @@ describe("createlogger", () => {
   })
 
   test("responds to log level changes", () => {
-    const log = createlogger("test")
+    const log = createLogger("test")
 
     setLogLevel("error")
     expect(log.debug).toBeUndefined()

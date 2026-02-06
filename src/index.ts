@@ -579,9 +579,3 @@ export function createLogger(
     },
   })
 }
-
-/** @deprecated Use createLogger() instead */
-export const createConditionalLogger = createLogger
-
-/** Lowercase alias for consistency with common naming conventions */
-export const createlogger = createLogger
