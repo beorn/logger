@@ -14,6 +14,8 @@ import {
   spansAreEnabled,
   setTraceFilter,
   getTraceFilter,
+  setDebugFilter,
+  getDebugFilter,
   resetIds,
   type Logger,
   type SpanLogger,
@@ -58,6 +60,7 @@ beforeEach(() => {
   setLogLevel("trace") // Enable all levels
   disableSpans() // Start with spans disabled
   setTraceFilter(null) // Clear any trace filter
+  setDebugFilter(null) // Clear any debug filter
   consoleMock = createConsoleMock()
 })
 
@@ -737,5 +740,179 @@ describe("TRACE namespace filtering", () => {
 
     // Both should appear
     expect(consoleMock.findSpans()).toHaveLength(2)
+  })
+})
+
+describe("DEBUG namespace filtering", () => {
+  test("setDebugFilter enables namespace filtering", () => {
+    setDebugFilter(["myapp"])
+    expect(getDebugFilter()).toEqual(["myapp"])
+  })
+
+  test("setDebugFilter(null) clears filter", () => {
+    setDebugFilter(["myapp"])
+    setDebugFilter(null)
+    expect(getDebugFilter()).toBeNull()
+  })
+
+  test("setDebugFilter([]) clears filter", () => {
+    setDebugFilter(["myapp"])
+    setDebugFilter([])
+    expect(getDebugFilter()).toBeNull()
+  })
+
+  test("filter allows exact namespace match", () => {
+    setDebugFilter(["myapp"])
+    const log = createLogger("myapp")
+    log.info("visible")
+
+    expect(consoleMock.output).toHaveLength(1)
+    expect(consoleMock.output[0]!.message).toContain("visible")
+  })
+
+  test("filter allows child namespace match", () => {
+    setDebugFilter(["myapp"])
+    const log = createLogger("myapp")
+    const child = log.logger("db")
+    child.info("visible")
+
+    expect(consoleMock.output).toHaveLength(1)
+    expect(consoleMock.output[0]!.message).toContain("visible")
+  })
+
+  test("filter blocks non-matching namespace", () => {
+    setDebugFilter(["myapp"])
+    const log = createLogger("other")
+    log.info("hidden")
+
+    expect(consoleMock.output).toHaveLength(0)
+  })
+
+  test("filter supports multiple namespaces", () => {
+    setDebugFilter(["myapp", "other"])
+
+    const log1 = createLogger("myapp")
+    const log2 = createLogger("other")
+    const log3 = createLogger("blocked")
+
+    log1.info("msg1")
+    log2.info("msg2")
+    log3.info("msg3")
+
+    expect(consoleMock.output).toHaveLength(2)
+    expect(consoleMock.output[0]!.message).toContain("myapp")
+    expect(consoleMock.output[1]!.message).toContain("other")
+  })
+
+  test("wildcard '*' allows all namespaces", () => {
+    setDebugFilter(["*"])
+
+    const log1 = createLogger("any")
+    const log2 = createLogger("namespace")
+
+    log1.info("msg1")
+    log2.info("msg2")
+
+    expect(consoleMock.output).toHaveLength(2)
+  })
+
+  test("negative pattern excludes matching namespace", () => {
+    setDebugFilter(["myapp", "-myapp:noisy"])
+
+    const log = createLogger("myapp")
+    const quiet = log.logger("db")
+    const noisy = log.logger("noisy")
+
+    log.info("root")
+    quiet.info("db msg")
+    noisy.info("noisy msg")
+
+    expect(consoleMock.output).toHaveLength(2)
+    expect(consoleMock.output[0]!.message).toContain("root")
+    expect(consoleMock.output[1]!.message).toContain("db msg")
+  })
+
+  test("negative pattern excludes children of excluded namespace", () => {
+    setDebugFilter(["*", "-km:storage:sql"])
+
+    const log = createLogger("km")
+    const storage = log.logger("storage")
+    const sql = storage.logger("sql")
+    const sqlChild = sql.logger("detail")
+
+    log.info("visible")
+    storage.info("visible")
+    sql.info("hidden")
+    sqlChild.info("also hidden")
+
+    expect(consoleMock.output).toHaveLength(2)
+  })
+
+  test("exclude-only pattern (no includes) blocks only excluded", () => {
+    setDebugFilter(["-km:noisy"])
+
+    const log1 = createLogger("km")
+    const log2 = createLogger("km").logger("noisy")
+    const log3 = createLogger("other")
+
+    log1.info("visible")
+    log2.info("hidden")
+    log3.info("visible")
+
+    expect(consoleMock.output).toHaveLength(2)
+    expect(consoleMock.output[0]!.message).toContain("km")
+    expect(consoleMock.output[1]!.message).toContain("other")
+  })
+
+  test("setDebugFilter auto-lowers log level to debug", () => {
+    setLogLevel("warn")
+    setDebugFilter(["myapp"])
+
+    expect(getLogLevel()).toBe("debug")
+  })
+
+  test("setDebugFilter preserves trace log level", () => {
+    setLogLevel("trace")
+    setDebugFilter(["myapp"])
+
+    expect(getLogLevel()).toBe("trace")
+  })
+
+  test("debug messages visible when filter matches", () => {
+    setLogLevel("warn") // Would normally hide debug
+    setDebugFilter(["myapp"]) // Auto-lowers to debug
+
+    const log = createLogger("myapp")
+    log.debug?.("debug visible")
+
+    expect(consoleMock.output).toHaveLength(1)
+    expect(consoleMock.output[0]!.message).toContain("debug visible")
+  })
+
+  test("getDebugFilter returns includes and excludes", () => {
+    setDebugFilter(["myapp", "-noisy"])
+
+    const filter = getDebugFilter()!
+    expect(filter).toContain("myapp")
+    expect(filter).toContain("-noisy")
+  })
+
+  test("filter also applies to spans", () => {
+    enableSpans()
+    setDebugFilter(["myapp"])
+
+    const log1 = createLogger("myapp")
+    const log2 = createLogger("other")
+
+    {
+      using span = log1.span("work")
+    }
+    {
+      using span = log2.span("work")
+    }
+
+    const spans = consoleMock.findSpans()
+    expect(spans).toHaveLength(1)
+    expect(spans[0]!.message).toContain("myapp")
   })
 })

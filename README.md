@@ -35,7 +35,8 @@ log.error(new Error("failed"))
 - **Namespace hierarchy** - Organize logs with `:` separators (`myapp:db:query`)
 - **Spans for timing** - TC39 `using` keyword with automatic duration tracking
 - **Conditional logging** - Optional chaining skips argument evaluation when disabled
-- **Environment control** - Configure via `LOG_LEVEL`, `TRACE`, `TRACE_FORMAT`
+- **Namespace filtering** - `DEBUG=myapp` filters output like the `debug` package, with negative patterns
+- **Environment control** - Configure via `LOG_LEVEL`, `DEBUG`, `TRACE`, `TRACE_FORMAT`
 - **Dual output** - Pretty console in dev, JSON in production
 
 ## Zero-Overhead Logging
@@ -65,15 +66,18 @@ log.debug?.(`expensive: ${computeExpensiveState()}`)
 
 ## Environment Variables
 
-| Variable       | Values                                  | Effect                  |
-| -------------- | --------------------------------------- | ----------------------- |
-| `LOG_LEVEL`    | trace, debug, info, warn, error, silent | Filter output by level  |
-| `TRACE`        | 1, true, or namespace prefixes          | Enable span output      |
-| `TRACE_FORMAT` | json                                    | Force JSON output       |
-| `NODE_ENV`     | production                              | Auto-enable JSON format |
+| Variable       | Values                                  | Effect                           |
+| -------------- | --------------------------------------- | -------------------------------- |
+| `LOG_LEVEL`    | trace, debug, info, warn, error, silent | Filter output by level           |
+| `DEBUG`        | *, namespace prefixes, -prefix          | Filter output by namespace       |
+| `TRACE`        | 1, true, or namespace prefixes          | Enable span output               |
+| `TRACE_FORMAT` | json                                    | Force JSON output                |
+| `NODE_ENV`     | production                              | Auto-enable JSON format          |
 
 ```bash
 LOG_LEVEL=debug bun run app         # Enable debug logging
+DEBUG=myapp bun run app             # Only show myapp (+ children), auto-enables debug level
+DEBUG='myapp,-myapp:noisy' bun run app  # Show myapp but exclude myapp:noisy
 TRACE=1 bun run app                 # Enable all span timing output
 TRACE=myapp:import bun run app      # Enable spans for specific namespace
 ```

@@ -22,17 +22,21 @@ log.error(new Error("failed"))
 
 ## Environment Variables
 
-| Variable     | Values                                  | Effect                  |
-| ------------ | --------------------------------------- | ----------------------- |
-| LOG_LEVEL    | trace, debug, info, warn, error, silent | Filter output by level  |
-| TRACE        | 1, true, or namespace prefixes          | Enable span output      |
-| TRACE_FORMAT | json                                    | Force JSON output       |
-| NODE_ENV     | production                              | Auto-enable JSON format |
+| Variable     | Values                                  | Effect                           |
+| ------------ | --------------------------------------- | -------------------------------- |
+| LOG_LEVEL    | trace, debug, info, warn, error, silent | Filter output by level           |
+| DEBUG        | *, namespace prefixes, -prefix          | Filter output by namespace       |
+| TRACE        | 1, true, or namespace prefixes          | Enable span output               |
+| TRACE_FORMAT | json                                    | Force JSON output                |
+| NODE_ENV     | production                              | Auto-enable JSON format          |
 
 ### Examples
 
 ```bash
 LOG_LEVEL=debug bun run app         # Enable debug logging
+DEBUG=km:storage bun run app        # Only show km:storage (+ children), auto-enables debug level
+DEBUG='km:*,-km:sql' bun run app    # Show all km namespaces except km:sql
+DEBUG='*' bun run app               # Show all namespaces at debug level
 TRACE=1 bun run app                 # Enable all span timing output
 TRACE=myapp:import bun run app      # Enable spans for specific namespace
 TRACE=myapp,other bun run app       # Enable spans for multiple prefixes
@@ -119,6 +123,8 @@ import {
   spansAreEnabled,
   setTraceFilter,
   getTraceFilter,
+  setDebugFilter,
+  getDebugFilter,
 } from "@beorn/logger"
 
 setLogLevel("debug") // Set minimum level
@@ -129,6 +135,10 @@ spansAreEnabled() // Check if spans are enabled
 setTraceFilter(["myapp"]) // Only output spans for "myapp" and "myapp:*"
 setTraceFilter(null) // Clear filter, output all spans
 getTraceFilter() // Get current filter: ["myapp"] or null
+setDebugFilter(["myapp"]) // Only show output for "myapp" and "myapp:*"
+setDebugFilter(["myapp", "-myapp:sql"]) // Show myapp but exclude myapp:sql
+setDebugFilter(null) // Clear filter, show all namespaces
+getDebugFilter() // Get current filter: ["myapp", "-myapp:sql"] or null
 ```
 
 ## Output Format

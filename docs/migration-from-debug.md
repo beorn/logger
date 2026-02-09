@@ -75,13 +75,15 @@ const cacheLog = log.logger("cache") // myapp:cache
 
 ### Environment Variables
 
-| debug            | @beorn/logger     | Effect                     |
-| ---------------- | ----------------- | -------------------------- |
-| `DEBUG=*`        | `LOG_LEVEL=debug` | Enable all debug output    |
-| `DEBUG=myapp*`   | `LOG_LEVEL=debug` | Enable debug for namespace |
-| `DEBUG=myapp:db` | (filter in code)  | Enable specific namespace  |
-| N/A              | `TRACE=1`         | Enable span timing         |
-| N/A              | `TRACE=myapp:db`  | Enable spans for namespace |
+| debug            | @beorn/logger       | Effect                     |
+| ---------------- | ------------------- | -------------------------- |
+| `DEBUG=*`        | `DEBUG=*`           | Enable all debug output    |
+| `DEBUG=myapp*`   | `DEBUG=myapp`       | Enable debug for namespace |
+| `DEBUG=myapp:db` | `DEBUG=myapp:db`    | Enable specific namespace  |
+| `DEBUG=*,-noisy` | `DEBUG=*,-noisy`    | Exclude specific namespace |
+| N/A              | `LOG_LEVEL=debug`   | Set log level without namespace filter |
+| N/A              | `TRACE=1`           | Enable span timing         |
+| N/A              | `TRACE=myapp:db`    | Enable spans for namespace |
 
 ### Conditional Enabling
 
@@ -219,7 +221,9 @@ const log = createLogger("myapp")
 # Before
 DEBUG=myapp* node app.js
 
-# After
+# After (DEBUG env var still works)
+DEBUG=myapp node app.js
+# Or set level globally without namespace filter
 LOG_LEVEL=debug node app.js
 # Or for spans
 TRACE=1 LOG_LEVEL=debug node app.js
@@ -287,9 +291,9 @@ After migration, verify:
 
 ## Gotchas
 
-### No Wildcard Filtering
+### Namespace Filtering
 
-debug supports `DEBUG=myapp:*` patterns. @beorn/logger filters by level globally. For namespace filtering with spans, use `TRACE=myapp:db`.
+@beorn/logger supports `DEBUG=myapp` for namespace filtering (like the `debug` package). It also supports negative patterns: `DEBUG=myapp,-myapp:noisy`. For span-specific namespace filtering, use `TRACE=myapp:db`.
 
 ### Printf Format Strings
 

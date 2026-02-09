@@ -111,6 +111,38 @@ if (traceEnv && traceEnv !== "1" && traceEnv !== "true") {
   spansEnabled = true
 }
 
+// Debug namespace filter (DEBUG=myapp or DEBUG=myapp,-myapp:noisy or DEBUG=*)
+// Supports negative patterns with `-` prefix (like the `debug` npm package)
+const debugEnv = process.env.DEBUG
+let debugIncludes: Set<string> | null = null
+let debugExcludes: Set<string> | null = null
+if (debugEnv) {
+  const parts = debugEnv.split(",").map((s) => s.trim())
+  const includes: string[] = []
+  const excludes: string[] = []
+  for (const part of parts) {
+    if (part.startsWith("-")) {
+      excludes.push(part.slice(1))
+    } else {
+      includes.push(part)
+    }
+  }
+  if (includes.length > 0) {
+    debugIncludes = new Set(
+      includes.some((p) => p === "*" || p === "1" || p === "true")
+        ? ["*"]
+        : includes,
+    )
+  }
+  if (excludes.length > 0) {
+    debugExcludes = new Set(excludes)
+  }
+  // Auto-lower log level to at least debug when DEBUG is set
+  if (LOG_LEVEL_PRIORITY[currentLogLevel] > LOG_LEVEL_PRIORITY.debug) {
+    currentLogLevel = "debug"
+  }
+}
+
 /** Set minimum log level */
 export function setLogLevel(level: LogLevel): void {
   currentLogLevel = level
@@ -155,6 +187,44 @@ export function getTraceFilter(): string[] | null {
   return traceFilter ? [...traceFilter] : null
 }
 
+/**
+ * Set debug namespace filter (like the `debug` npm package).
+ * When set, only loggers matching these namespace prefixes produce output.
+ * Supports negative patterns with `-` prefix (e.g., ["-km:noisy"]).
+ * Also ensures log level is at least `debug`.
+ * @param namespaces - Array of namespace prefixes (prefix with `-` to exclude), or null to disable
+ */
+export function setDebugFilter(namespaces: string[] | null): void {
+  if (namespaces === null || namespaces.length === 0) {
+    debugIncludes = null
+    debugExcludes = null
+  } else {
+    const includes: string[] = []
+    const excludes: string[] = []
+    for (const ns of namespaces) {
+      if (ns.startsWith("-")) {
+        excludes.push(ns.slice(1))
+      } else {
+        includes.push(ns)
+      }
+    }
+    debugIncludes = includes.length > 0 ? new Set(includes) : null
+    debugExcludes = excludes.length > 0 ? new Set(excludes) : null
+    if (LOG_LEVEL_PRIORITY[currentLogLevel] > LOG_LEVEL_PRIORITY.debug) {
+      currentLogLevel = "debug"
+    }
+  }
+}
+
+/** Get current debug namespace filter (null means no filtering) */
+export function getDebugFilter(): string[] | null {
+  if (!debugIncludes && !debugExcludes) return null
+  const result: string[] = []
+  if (debugIncludes) result.push(...debugIncludes)
+  if (debugExcludes) result.push(...[...debugExcludes].map((e) => `-${e}`))
+  return result
+}
+
 // ============ ID Generation ============
 
 let spanIdCounter = 0
@@ -183,13 +253,7 @@ function shouldLog(level: LogLevel): boolean {
 function shouldTraceNamespace(namespace: string): boolean {
   if (!spansEnabled) return false
   if (!traceFilter) return true
-  // Check if any filter prefix matches
-  for (const filter of traceFilter) {
-    if (namespace === filter || namespace.startsWith(filter + ":")) {
-      return true
-    }
-  }
-  return false
+  return matchesNamespaceSet(namespace, traceFilter)
 }
 
 function formatConsole(
@@ -257,6 +321,30 @@ function formatJSON(
   })
 }
 
+function matchesNamespaceSet(
+  namespace: string,
+  set: Set<string>,
+): boolean {
+  if (set.has("*")) return true
+  for (const filter of set) {
+    if (namespace === filter || namespace.startsWith(filter + ":")) {
+      return true
+    }
+  }
+  return false
+}
+
+function shouldDebugNamespace(namespace: string): boolean {
+  if (!debugIncludes && !debugExcludes) return true
+  // Excludes take priority
+  if (debugExcludes && matchesNamespaceSet(namespace, debugExcludes)) {
+    return false
+  }
+  // If includes are set, namespace must match
+  if (debugIncludes) return matchesNamespaceSet(namespace, debugIncludes)
+  return true
+}
+
 function writeLog(
   namespace: string,
   level: OutputLogLevel,
@@ -264,6 +352,7 @@ function writeLog(
   data?: Record<string, unknown>,
 ): void {
   if (!shouldLog(level)) return
+  if (!shouldDebugNamespace(namespace)) return
 
   const formatted =
     process.env.NODE_ENV === "production" || process.env.TRACE_FORMAT === "json"
@@ -294,6 +383,7 @@ function writeSpan(
   attrs: Record<string, unknown>,
 ): void {
   if (!shouldTraceNamespace(namespace)) return
+  if (!shouldDebugNamespace(namespace)) return
 
   const message = `(${duration}ms)`
   const formatted =
