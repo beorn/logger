@@ -75,15 +75,15 @@ const cacheLog = log.logger("cache") // myapp:cache
 
 ### Environment Variables
 
-| debug            | @beorn/logger       | Effect                     |
-| ---------------- | ------------------- | -------------------------- |
-| `DEBUG=*`        | `DEBUG=*`           | Enable all debug output    |
-| `DEBUG=myapp*`   | `DEBUG=myapp`       | Enable debug for namespace |
-| `DEBUG=myapp:db` | `DEBUG=myapp:db`    | Enable specific namespace  |
-| `DEBUG=*,-noisy` | `DEBUG=*,-noisy`    | Exclude specific namespace |
-| N/A              | `LOG_LEVEL=debug`   | Set log level without namespace filter |
-| N/A              | `TRACE=1`           | Enable span timing         |
-| N/A              | `TRACE=myapp:db`    | Enable spans for namespace |
+| debug            | @beorn/logger     | Effect                                 |
+| ---------------- | ----------------- | -------------------------------------- |
+| `DEBUG=*`        | `DEBUG=*`         | Enable all debug output                |
+| `DEBUG=myapp*`   | `DEBUG=myapp`     | Enable debug for namespace             |
+| `DEBUG=myapp:db` | `DEBUG=myapp:db`  | Enable specific namespace              |
+| `DEBUG=*,-noisy` | `DEBUG=*,-noisy`  | Exclude specific namespace             |
+| N/A              | `LOG_LEVEL=debug` | Set log level without namespace filter |
+| N/A              | `TRACE=1`         | Enable span timing                     |
+| N/A              | `TRACE=myapp:db`  | Enable spans for namespace             |
 
 ### Conditional Enabling
 

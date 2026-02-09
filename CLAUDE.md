@@ -22,13 +22,13 @@ log.error(new Error("failed"))
 
 ## Environment Variables
 
-| Variable     | Values                                  | Effect                           |
-| ------------ | --------------------------------------- | -------------------------------- |
-| LOG_LEVEL    | trace, debug, info, warn, error, silent | Filter output by level           |
-| DEBUG        | *, namespace prefixes, -prefix          | Filter output by namespace       |
-| TRACE        | 1, true, or namespace prefixes          | Enable span output               |
-| TRACE_FORMAT | json                                    | Force JSON output                |
-| NODE_ENV     | production                              | Auto-enable JSON format          |
+| Variable     | Values                                  | Effect                     |
+| ------------ | --------------------------------------- | -------------------------- |
+| LOG_LEVEL    | trace, debug, info, warn, error, silent | Filter output by level     |
+| DEBUG        | \*, namespace prefixes, -prefix         | Filter output by namespace |
+| TRACE        | 1, true, or namespace prefixes          | Enable span output         |
+| TRACE_FORMAT | json                                    | Force JSON output          |
+| NODE_ENV     | production                              | Auto-enable JSON format    |
 
 ### Examples
 

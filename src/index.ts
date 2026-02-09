@@ -321,10 +321,7 @@ function formatJSON(
   })
 }
 
-function matchesNamespaceSet(
-  namespace: string,
-  set: Set<string>,
-): boolean {
+function matchesNamespaceSet(namespace: string, set: Set<string>): boolean {
   if (set.has("*")) return true
   for (const filter of set) {
     if (namespace === filter || namespace.startsWith(filter + ":")) {
