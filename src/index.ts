@@ -79,6 +79,20 @@ export interface SpanLogger extends Logger, Disposable {
   }
 }
 
+// ============ Writers ============
+
+type LogWriter = (formatted: string, level: string) => void
+const writers: LogWriter[] = []
+
+/** Add a writer that receives all formatted log output. Returns unsubscribe. */
+export function addWriter(writer: LogWriter): () => void {
+  writers.push(writer)
+  return () => {
+    const idx = writers.indexOf(writer)
+    if (idx !== -1) writers.splice(idx, 1)
+  }
+}
+
 // ============ Configuration ============
 
 const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
@@ -356,6 +370,8 @@ function writeLog(
       ? formatJSON(namespace, level, message, data)
       : formatConsole(namespace, level, message, data)
 
+  for (const w of writers) w(formatted, level)
+
   // Use console methods for Ink compatibility
   switch (level) {
     case "trace":
@@ -388,6 +404,7 @@ function writeSpan(
       ? formatJSON(namespace, "span", message, { duration, ...attrs })
       : formatConsole(namespace, "span", message, { duration, ...attrs })
 
+  for (const w of writers) w(formatted, "span")
   console.error(formatted)
 }
 
