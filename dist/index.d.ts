@@ -63,6 +63,9 @@ export interface SpanLogger extends Logger, Disposable {
         [key: string]: unknown;
     };
 }
+type LogWriter = (formatted: string, level: string) => void;
+/** Add a writer that receives all formatted log output. Returns unsubscribe. */
+export declare function addWriter(writer: LogWriter): () => void;
 /** Set minimum log level */
 export declare function setLogLevel(level: LogLevel): void;
 /** Get current log level */
@@ -81,25 +84,17 @@ export declare function spansAreEnabled(): boolean;
 export declare function setTraceFilter(namespaces: string[] | null): void;
 /** Get current trace filter (null means no filtering) */
 export declare function getTraceFilter(): string[] | null;
-export declare function resetIds(): void;
 /**
- * Create a logger for a component
- *
- * @example
- * const log = createLogger('myapp')
- * log.info('starting')
- *
- * // With initial props
- * const log = createLogger('myapp', { version: '1.0' })
- *
- * // Create spans
- * {
- *   using task = log.span('import', { file: 'data.csv' })
- *   task.info('importing')
- *   task.spanData.count = 42
- * }
+ * Set debug namespace filter (like the `debug` npm package).
+ * When set, only loggers matching these namespace prefixes produce output.
+ * Supports negative patterns with `-` prefix (e.g., ["-km:noisy"]).
+ * Also ensures log level is at least `debug`.
+ * @param namespaces - Array of namespace prefixes (prefix with `-` to exclude), or null to disable
  */
-export declare function createLogger(name: string, props?: Record<string, unknown>): Logger;
+export declare function setDebugFilter(namespaces: string[] | null): void;
+/** Get current debug namespace filter (null means no filtering) */
+export declare function getDebugFilter(): string[] | null;
+export declare function resetIds(): void;
 /** Enable span collection for analysis */
 export declare function startCollecting(): void;
 /** Stop collecting and return collected spans */
@@ -108,21 +103,59 @@ export declare function stopCollecting(): SpanData[];
 export declare function getCollectedSpans(): SpanData[];
 /** Clear collected spans */
 export declare function clearCollectedSpans(): void;
-/** Logger with optional methods - returns undefined for disabled levels */
-export type ConditionalLogger = Omit<Logger, "trace" | "debug" | "info" | "warn" | "error"> & {
-    trace?: Logger["trace"];
-    debug?: Logger["debug"];
-    info?: Logger["info"];
-    warn?: Logger["warn"];
-    error?: Logger["error"];
-};
 /**
- * Create a conditional logger that returns undefined for disabled levels.
- * Use with optional chaining to skip argument evaluation for disabled levels.
+ * Logger with optional methods — returns undefined for disabled levels.
+ * Use with optional chaining: `log.debug?.("msg")` for zero-overhead when disabled.
+ *
+ * Defined as an explicit interface (not Omit<Logger,...>) so that
+ * oxlint's type-aware mode can resolve it without advanced type inference.
+ */
+export interface ConditionalLogger {
+    readonly name: string;
+    readonly props: Readonly<Record<string, unknown>>;
+    readonly spanData: SpanData | null;
+    trace?: (message: string, data?: Record<string, unknown>) => void;
+    debug?: (message: string, data?: Record<string, unknown>) => void;
+    info?: (message: string, data?: Record<string, unknown>) => void;
+    warn?: (message: string, data?: Record<string, unknown>) => void;
+    error?: {
+        (message: string, data?: Record<string, unknown>): void;
+        (error: Error, data?: Record<string, unknown>): void;
+    };
+    logger(namespace?: string, props?: Record<string, unknown>): Logger;
+    span(namespace?: string, props?: Record<string, unknown>): SpanLogger;
+    end(): void;
+}
+/**
+ * Create a logger for a component.
+ * Returns undefined for disabled levels - use with optional chaining for zero overhead.
+ *
+ * Log levels (most → least verbose): trace < debug < info < warn < error < silent
+ * Default level: info (trace and debug disabled)
  *
  * @example
- * const log = createConditionalLogger('myapp')
- * log.debug?.(`expensive: ${computeExpensiveState()}`)  // Skips if debug disabled
+ * const log = createLogger('myapp')
+ *
+ * // All methods support ?. for zero-overhead when disabled
+ * log.trace?.(`very verbose: ${expensiveDebug()}`)  // Skipped at info level
+ * log.debug?.(`debug: ${getState()}`)               // Skipped at info level
+ * log.info?.('starting')                            // Enabled at info level
+ * log.warn?.('deprecated')                          // Enabled at info level
+ * log.error?.('failed')                             // Enabled at info level
+ *
+ * // With -q flag or LOG_LEVEL=warn:
+ * log.info?.('starting')  // Now skipped - info < warn
+ *
+ * // With initial props
+ * const log = createLogger('myapp', { version: '1.0' })
+ *
+ * // Create spans
+ * {
+ *   using task = log.span('import', { file: 'data.csv' })
+ *   task.info?.('importing')
+ *   task.spanData.count = 42
+ * }
  */
-export declare function createConditionalLogger(name: string, props?: Record<string, unknown>): ConditionalLogger;
+export declare function createLogger(name: string, props?: Record<string, unknown>): ConditionalLogger;
+export {};
 //# sourceMappingURL=index.d.ts.map
