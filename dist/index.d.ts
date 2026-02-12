@@ -66,6 +66,8 @@ export interface SpanLogger extends Logger, Disposable {
 type LogWriter = (formatted: string, level: string) => void;
 /** Add a writer that receives all formatted log output. Returns unsubscribe. */
 export declare function addWriter(writer: LogWriter): () => void;
+/** Suppress console output from the logger (writers still receive output). */
+export declare function setSuppressConsole(value: boolean): void;
 /** Set minimum log level */
 export declare function setLogLevel(level: LogLevel): void;
 /** Get current log level */

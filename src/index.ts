@@ -93,6 +93,13 @@ export function addWriter(writer: LogWriter): () => void {
   }
 }
 
+let suppressConsole = false
+
+/** Suppress console output from the logger (writers still receive output). */
+export function setSuppressConsole(value: boolean): void {
+  suppressConsole = value
+}
+
 // ============ Configuration ============
 
 const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
@@ -372,6 +379,8 @@ function writeLog(
 
   for (const w of writers) w(formatted, level)
 
+  if (suppressConsole) return
+
   // Use console methods for Ink compatibility
   switch (level) {
     case "trace":
@@ -405,7 +414,7 @@ function writeSpan(
       : formatConsole(namespace, "span", message, { duration, ...attrs })
 
   for (const w of writers) w(formatted, "span")
-  console.error(formatted)
+  if (!suppressConsole) console.error(formatted)
 }
 
 // ============ Implementation ============
