@@ -131,20 +131,17 @@ describe("logging methods", () => {
     ["warn", ["warn", "error"], 2],
     ["error", ["error"], 1],
     ["info", ["info", "warn", "error"], 3],
-  ] as const)(
-    "setLogLevel(%s) filters to %j",
-    (threshold, expectedLevels, expectedCount) => {
-      setLogLevel(threshold)
-      const log = createLogger("test")
+  ] as const)("setLogLevel(%s) filters to %j", (threshold, expectedLevels, expectedCount) => {
+    setLogLevel(threshold)
+    const log = createLogger("test")
 
-      log.debug?.("d")
-      log.info?.("i")
-      log.warn?.("w")
-      log.error?.("e")
+    log.debug?.("d")
+    log.info?.("i")
+    log.warn?.("w")
+    log.error?.("e")
 
-      expect(consoleMock.output).toHaveLength(expectedCount)
-    },
-  )
+    expect(consoleMock.output).toHaveLength(expectedCount)
+  })
 
   test("error accepts Error object", () => {
     const log = createLogger("test")
@@ -376,22 +373,10 @@ describe("console method usage (patchConsole compatibility)", () => {
 describe("createLogger", () => {
   // Test enabled/disabled levels with parameterized tests
   test.each([
-    [
-      "trace",
-      { trace: true, debug: true, info: true, warn: true, error: true },
-    ],
-    [
-      "debug",
-      { trace: false, debug: true, info: true, warn: true, error: true },
-    ],
-    [
-      "warn",
-      { trace: false, debug: false, info: false, warn: true, error: true },
-    ],
-    [
-      "error",
-      { trace: false, debug: false, info: false, warn: false, error: true },
-    ],
+    ["trace", { trace: true, debug: true, info: true, warn: true, error: true }],
+    ["debug", { trace: false, debug: true, info: true, warn: true, error: true }],
+    ["warn", { trace: false, debug: false, info: false, warn: true, error: true }],
+    ["error", { trace: false, debug: false, info: false, warn: false, error: true }],
   ] as const)("at level %s, methods defined: %o", (level, expected) => {
     setLogLevel(level)
     const log = createLogger("test")
@@ -648,15 +633,12 @@ describe("TRACE namespace filtering", () => {
   })
 
   // Test that setTraceFilter clears filter (but doesn't disable spans)
-  test.each([[null], [[]]] as const)(
-    "setTraceFilter(%j) clears filter",
-    (filter) => {
-      setTraceFilter(["myapp"])
-      setTraceFilter(filter)
+  test.each([[null], [[]]] as const)("setTraceFilter(%j) clears filter", (filter) => {
+    setTraceFilter(["myapp"])
+    setTraceFilter(filter)
 
-      expect(getTraceFilter()).toBeNull()
-    },
-  )
+    expect(getTraceFilter()).toBeNull()
+  })
 
   test("filter allows exact namespace match", () => {
     setTraceFilter(["myapp"])

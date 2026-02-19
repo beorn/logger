@@ -110,8 +110,7 @@ export const log = new Proxy(baseLog, {
   get(target, prop: string) {
     // For level methods, return undefined if disabled
     if (prop in LEVEL_PRIORITY) {
-      const current =
-        LEVEL_PRIORITY[getLogLevel() as keyof typeof LEVEL_PRIORITY]
+      const current = LEVEL_PRIORITY[getLogLevel() as keyof typeof LEVEL_PRIORITY]
       if (LEVEL_PRIORITY[prop as keyof typeof LEVEL_PRIORITY] < current) {
         return undefined
       }

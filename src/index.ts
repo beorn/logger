@@ -149,11 +149,7 @@ if (debugEnv) {
     }
   }
   if (includes.length > 0) {
-    debugIncludes = new Set(
-      includes.some((p) => p === "*" || p === "1" || p === "true")
-        ? ["*"]
-        : includes,
-    )
+    debugIncludes = new Set(includes.some((p) => p === "*" || p === "1" || p === "true") ? ["*"] : includes)
   }
   if (excludes.length > 0) {
     debugExcludes = new Set(excludes)
@@ -277,15 +273,8 @@ function shouldTraceNamespace(namespace: string): boolean {
   return matchesNamespaceSet(namespace, traceFilter)
 }
 
-function formatConsole(
-  namespace: string,
-  level: string,
-  message: string,
-  data?: Record<string, unknown>,
-): string {
-  const time = pc.dim(
-    new Date().toISOString().split("T")[1]?.split(".")[0] || "",
-  )
+function formatConsole(namespace: string, level: string, message: string, data?: Record<string, unknown>): string {
+  const time = pc.dim(new Date().toISOString().split("T")[1]?.split(".")[0] || "")
 
   let levelStr = ""
   switch (level) {
@@ -319,12 +308,7 @@ function formatConsole(
   return output
 }
 
-function formatJSON(
-  namespace: string,
-  level: string,
-  message: string,
-  data?: Record<string, unknown>,
-): string {
+function formatJSON(namespace: string, level: string, message: string, data?: Record<string, unknown>): string {
   const entry = {
     time: new Date().toISOString(),
     level,
@@ -363,12 +347,7 @@ function shouldDebugNamespace(namespace: string): boolean {
   return true
 }
 
-function writeLog(
-  namespace: string,
-  level: OutputLogLevel,
-  message: string,
-  data?: Record<string, unknown>,
-): void {
+function writeLog(namespace: string, level: OutputLogLevel, message: string, data?: Record<string, unknown>): void {
   if (!shouldLog(level)) return
   if (!shouldDebugNamespace(namespace)) return
 
@@ -399,11 +378,7 @@ function writeLog(
   }
 }
 
-function writeSpan(
-  namespace: string,
-  duration: number,
-  attrs: Record<string, unknown>,
-): void {
+function writeSpan(namespace: string, duration: number, attrs: Record<string, unknown>): void {
   if (!shouldTraceNamespace(namespace)) return
   if (!shouldDebugNamespace(namespace)) return
 
@@ -436,11 +411,7 @@ function createLoggerImpl(
   parentSpanId: string | null,
   traceId: string | null,
 ): Logger {
-  const log = (
-    level: OutputLogLevel,
-    msgOrError: string | Error,
-    data?: Record<string, unknown>,
-  ): void => {
+  const log = (level: OutputLogLevel, msgOrError: string | Error, data?: Record<string, unknown>): void => {
     if (msgOrError instanceof Error) {
       const err = msgOrError
       writeLog(name, level, err.message, {
@@ -504,13 +475,7 @@ function createLoggerImpl(
     logger(namespace?: string, childProps?: Record<string, unknown>): Logger {
       const childName = namespace ? `${name}:${namespace}` : name
       const mergedProps = { ...props, ...childProps }
-      return createLoggerImpl(
-        childName,
-        mergedProps,
-        null,
-        parentSpanId,
-        traceId,
-      )
+      return createLoggerImpl(childName, mergedProps, null, parentSpanId, traceId)
     },
 
     span(namespace?: string, childProps?: Record<string, unknown>): SpanLogger {
@@ -529,18 +494,10 @@ function createLoggerImpl(
         attrs: {},
       }
 
-      const spanLogger = createLoggerImpl(
-        childName,
-        mergedProps,
-        newSpanData,
-        newSpanId,
-        newTraceId,
-      ) as SpanLogger
+      const spanLogger = createLoggerImpl(childName, mergedProps, newSpanData, newSpanId, newTraceId) as SpanLogger
 
       // Add disposal
-      ;(spanLogger as unknown as { [Symbol.dispose]: () => void })[
-        Symbol.dispose
-      ] = () => {
+      ;(spanLogger as unknown as { [Symbol.dispose]: () => void })[Symbol.dispose] = () => {
         if (newSpanData.endTime !== null) return // Already disposed
 
         newSpanData.endTime = Date.now()
@@ -566,9 +523,7 @@ function createLoggerImpl(
 
     end(): void {
       if (spanMeta?.endTime === null) {
-        ;(this as unknown as { [Symbol.dispose]: () => void })[
-          Symbol.dispose
-        ]?.()
+        ;(this as unknown as { [Symbol.dispose]: () => void })[Symbol.dispose]?.()
       }
     },
   }
@@ -580,10 +535,7 @@ function createLoggerImpl(
  * Create a plain logger for a component (internal use).
  * For application code, use createLogger() instead which returns undefined for disabled levels.
  */
-function createPlainLogger(
-  name: string,
-  props?: Record<string, unknown>,
-): Logger {
+function createPlainLogger(name: string, props?: Record<string, unknown>): Logger {
   return createLoggerImpl(name, props || {}, null, null, null)
 }
 
@@ -672,19 +624,14 @@ export interface ConditionalLogger {
  *   task.spanData.count = 42
  * }
  */
-export function createLogger(
-  name: string,
-  props?: Record<string, unknown>,
-): ConditionalLogger {
+export function createLogger(name: string, props?: Record<string, unknown>): ConditionalLogger {
   const baseLog = createPlainLogger(name, props)
 
   return new Proxy(baseLog as ConditionalLogger, {
     get(target, prop: string) {
       if (prop in LOG_LEVEL_PRIORITY && prop !== "silent") {
         const current = LOG_LEVEL_PRIORITY[currentLogLevel]
-        if (
-          LOG_LEVEL_PRIORITY[prop as keyof typeof LOG_LEVEL_PRIORITY] < current
-        ) {
+        if (LOG_LEVEL_PRIORITY[prop as keyof typeof LOG_LEVEL_PRIORITY] < current) {
           return undefined
         }
       }

@@ -87,15 +87,10 @@ export interface WorkerSpanMessage {
 }
 
 /** Union type for all worker messages */
-export type WorkerMessage =
-  | WorkerConsoleMessage
-  | WorkerLogMessage
-  | WorkerSpanMessage
+export type WorkerMessage = WorkerConsoleMessage | WorkerLogMessage | WorkerSpanMessage
 
 /** Type guard for WorkerConsoleMessage */
-export function isWorkerConsoleMessage(
-  msg: unknown,
-): msg is WorkerConsoleMessage {
+export function isWorkerConsoleMessage(msg: unknown): msg is WorkerConsoleMessage {
   return (
     typeof msg === "object" &&
     (msg as WorkerConsoleMessage)?.type === "console" &&
@@ -125,11 +120,7 @@ export function isWorkerSpanMessage(msg: unknown): msg is WorkerSpanMessage {
 
 /** Type guard for any worker message */
 export function isWorkerMessage(msg: unknown): msg is WorkerMessage {
-  return (
-    isWorkerConsoleMessage(msg) ||
-    isWorkerLogMessage(msg) ||
-    isWorkerSpanMessage(msg)
-  )
+  return isWorkerConsoleMessage(msg) || isWorkerLogMessage(msg) || isWorkerSpanMessage(msg)
 }
 
 // ============ Worker Side ============
@@ -209,10 +200,7 @@ function serializeArg(arg: unknown, depth = 0): unknown {
  * console.error(new Error("failed"))
  * ```
  */
-export function forwardConsole(
-  postMessage: PostMessageFn,
-  namespace?: string,
-): void {
+export function forwardConsole(postMessage: PostMessageFn, namespace?: string): void {
   // Store original console for restoration
   if (!originalConsole) {
     originalConsole = { ...console }
@@ -326,11 +314,7 @@ export function createWorkerLogger(
         level,
         namespace,
         message,
-        data: data
-          ? { ...props, ...data }
-          : Object.keys(props).length > 0
-            ? props
-            : undefined,
+        data: data ? { ...props, ...data } : Object.keys(props).length > 0 ? props : undefined,
         timestamp: Date.now(),
       })
     } catch {
@@ -338,13 +322,8 @@ export function createWorkerLogger(
     }
   }
 
-  function createSpan(
-    spanNamespace?: string,
-    spanProps?: Record<string, unknown>,
-  ): SpanLogger {
-    const fullNamespace = spanNamespace
-      ? `${namespace}:${spanNamespace}`
-      : namespace
+  function createSpan(spanNamespace?: string, spanProps?: Record<string, unknown>): SpanLogger {
+    const fullNamespace = spanNamespace ? `${namespace}:${spanNamespace}` : namespace
     const mergedProps = { ...props, ...spanProps }
     const spanId = generateWorkerSpanId()
     const spanTraceId = traceId || generateWorkerTraceId()
@@ -427,15 +406,10 @@ export function createWorkerLogger(
     }
 
     // Create child logger for the span
-    const childLogger = createWorkerLogger(
-      postMessage,
-      fullNamespace,
-      mergedProps,
-      {
-        parentSpanId: spanId,
-        traceId: spanTraceId,
-      },
-    )
+    const childLogger = createWorkerLogger(postMessage, fullNamespace, mergedProps, {
+      parentSpanId: spanId,
+      traceId: spanTraceId,
+    })
 
     const spanLogger: SpanLogger = {
       ...childLogger,
@@ -469,19 +443,9 @@ export function createWorkerLogger(
       }
     },
 
-    logger(
-      childNamespace?: string,
-      childProps?: Record<string, unknown>,
-    ): Logger {
-      const fullNamespace = childNamespace
-        ? `${namespace}:${childNamespace}`
-        : namespace
-      return createWorkerLogger(
-        postMessage,
-        fullNamespace,
-        { ...props, ...childProps },
-        options,
-      )
+    logger(childNamespace?: string, childProps?: Record<string, unknown>): Logger {
+      const fullNamespace = childNamespace ? `${namespace}:${childNamespace}` : namespace
+      return createWorkerLogger(postMessage, fullNamespace, { ...props, ...childProps }, options)
     },
 
     span: createSpan,
@@ -542,9 +506,7 @@ export function createWorkerConsoleHandler(
 
     let logger = loggers.get(ns)
     if (!logger) {
-      logger = options.logger
-        ? (options.logger as ConditionalLogger)
-        : createLogger(ns)
+      logger = options.logger ? (options.logger as ConditionalLogger) : createLogger(ns)
       loggers.set(ns, logger)
     }
     return logger
@@ -560,17 +522,12 @@ export function createWorkerConsoleHandler(
         ? ""
         : args.length === 1 && typeof args[0] === "string"
           ? args[0]
-          : args
-              .map((a) => (typeof a === "string" ? a : JSON.stringify(a)))
-              .join(" ")
+          : args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ")
 
     // Extract data object if present (last arg is object and not a string)
     const lastArg = args[args.length - 1]
     const data =
-      args.length > 1 &&
-      typeof lastArg === "object" &&
-      lastArg !== null &&
-      !Array.isArray(lastArg)
+      args.length > 1 && typeof lastArg === "object" && lastArg !== null && !Array.isArray(lastArg)
         ? (lastArg as Record<string, unknown>)
         : undefined
 
@@ -627,9 +584,7 @@ export interface WorkerLogHandlerOptions {
  * }
  * ```
  */
-export function createWorkerLogHandler(
-  options: WorkerLogHandlerOptions = {},
-): (message: WorkerMessage) => void {
+export function createWorkerLogHandler(options: WorkerLogHandlerOptions = {}): (message: WorkerMessage) => void {
   const loggers = new Map<string, ConditionalLogger>()
 
   // Enable spans if requested
@@ -656,16 +611,11 @@ export function createWorkerLogHandler(
           ? ""
           : args.length === 1 && typeof args[0] === "string"
             ? args[0]
-            : args
-                .map((a) => (typeof a === "string" ? a : JSON.stringify(a)))
-                .join(" ")
+            : args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ")
 
       const lastArg = args[args.length - 1]
       const data =
-        args.length > 1 &&
-        typeof lastArg === "object" &&
-        lastArg !== null &&
-        !Array.isArray(lastArg)
+        args.length > 1 && typeof lastArg === "object" && lastArg !== null && !Array.isArray(lastArg)
           ? (lastArg as Record<string, unknown>)
           : undefined
 

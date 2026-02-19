@@ -19,12 +19,7 @@ import {
   type WorkerSpanMessage,
   type WorkerMessage,
 } from "../src/worker.ts"
-import {
-  setLogLevel,
-  resetIds,
-  disableSpans,
-  enableSpans,
-} from "../src/index.ts"
+import { setLogLevel, resetIds, disableSpans, enableSpans } from "../src/index.ts"
 
 // Capture console output from main thread handler
 let consoleOutput: { level: string; message: string }[] = []
@@ -78,9 +73,7 @@ describe("isWorkerConsoleMessage", () => {
     expect(isWorkerConsoleMessage({})).toBe(false)
     expect(isWorkerConsoleMessage({ type: "other" })).toBe(false)
     expect(isWorkerConsoleMessage({ type: "console" })).toBe(false)
-    expect(isWorkerConsoleMessage({ type: "console", level: "log" })).toBe(
-      false,
-    )
+    expect(isWorkerConsoleMessage({ type: "console", level: "log" })).toBe(false)
   })
 })
 
@@ -112,14 +105,7 @@ describe("forwardConsole", () => {
     console.trace("trace")
 
     expect(messages).toHaveLength(6)
-    expect(messages.map((m) => m.level)).toEqual([
-      "log",
-      "debug",
-      "info",
-      "warn",
-      "error",
-      "trace",
-    ])
+    expect(messages.map((m) => m.level)).toEqual(["log", "debug", "info", "warn", "error", "trace"])
   })
 
   test("includes namespace if provided", () => {
@@ -446,9 +432,7 @@ describe("createWorkerLogger spans", () => {
     }
 
     // Should have start and end events
-    const spanMessages = messages.filter(
-      (m) => m.type === "span",
-    ) as WorkerSpanMessage[]
+    const spanMessages = messages.filter((m) => m.type === "span") as WorkerSpanMessage[]
     expect(spanMessages).toHaveLength(2)
 
     const start = spanMessages.find((m) => m.event === "start")!
@@ -478,15 +462,9 @@ describe("createWorkerLogger spans", () => {
       }
     }
 
-    const spanMessages = messages.filter(
-      (m) => m.type === "span",
-    ) as WorkerSpanMessage[]
-    const outerStart = spanMessages.find(
-      (m) => m.namespace === "test:outer" && m.event === "start",
-    )!
-    const innerStart = spanMessages.find(
-      (m) => m.namespace === "test:outer:inner" && m.event === "start",
-    )!
+    const spanMessages = messages.filter((m) => m.type === "span") as WorkerSpanMessage[]
+    const outerStart = spanMessages.find((m) => m.namespace === "test:outer" && m.event === "start")!
+    const innerStart = spanMessages.find((m) => m.namespace === "test:outer:inner" && m.event === "start")!
 
     // Both should share the same trace ID
     expect(innerStart.traceId).toBe(outerStart.traceId)
@@ -506,9 +484,7 @@ describe("createWorkerLogger spans", () => {
       span.debug("details")
     }
 
-    const logMessages = messages.filter(
-      (m) => m.type === "log",
-    ) as WorkerLogMessage[]
+    const logMessages = messages.filter((m) => m.type === "log") as WorkerLogMessage[]
     expect(logMessages).toHaveLength(2)
     expect(logMessages[0]!.namespace).toBe("test:work")
     expect(logMessages[0]!.message).toBe("processing")
@@ -601,12 +577,8 @@ describe("full logger end-to-end", () => {
 
     // Should have log outputs and span output
     expect(consoleOutput.length).toBeGreaterThanOrEqual(4) // 3 logs + 1 span
-    expect(consoleOutput.some((o) => o.message.includes("starting work"))).toBe(
-      true,
-    )
-    expect(consoleOutput.some((o) => o.message.includes("processing"))).toBe(
-      true,
-    )
+    expect(consoleOutput.some((o) => o.message.includes("starting work"))).toBe(true)
+    expect(consoleOutput.some((o) => o.message.includes("processing"))).toBe(true)
     expect(consoleOutput.some((o) => o.message.includes("done"))).toBe(true)
   })
 })

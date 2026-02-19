@@ -17,10 +17,7 @@ Complete API documentation for @beorn/logger.
 ## createLogger
 
 ```typescript
-function createLogger(
-  name: string,
-  props?: Record<string, unknown>,
-): ConditionalLogger
+function createLogger(name: string, props?: Record<string, unknown>): ConditionalLogger
 ```
 
 Create a logger for a component. Returns a conditional logger where disabled log levels return `undefined` - use optional chaining (`?.`) to skip argument evaluation.
@@ -538,12 +535,7 @@ Reset span and trace ID counters (useful for deterministic tests).
 ### Example
 
 ```typescript
-import {
-  createLogger,
-  startCollecting,
-  stopCollecting,
-  resetIds,
-} from "@beorn/logger"
+import { createLogger, startCollecting, stopCollecting, resetIds } from "@beorn/logger"
 
 // Reset for deterministic test output
 resetIds()
