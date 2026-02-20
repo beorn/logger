@@ -45,10 +45,18 @@ function createConsoleMock() {
   vi.spyOn(console, "warn").mockImplementation(capture("warn"))
   vi.spyOn(console, "error").mockImplementation(capture("error"))
 
+  // Spans use process.stderr.write to bypass Ink's patchConsole
+  const origStderrWrite = process.stderr.write.bind(process.stderr)
+  vi.spyOn(process.stderr, "write").mockImplementation(((chunk: string | Uint8Array) => {
+    output.push({ level: "stderr", message: String(chunk) })
+    return true
+  }) as typeof process.stderr.write)
+
   return {
     output,
     findSpan: () => output.find((o) => o.message.includes("SPAN")),
     findSpans: () => output.filter((o) => o.message.includes("SPAN")),
+    origStderrWrite,
   }
 }
 
@@ -357,7 +365,7 @@ describe("console method usage (patchConsole compatibility)", () => {
   // Consolidated: log level -> console method mapping (covered above in logging methods)
   // This describe block focuses on patchConsole-specific behavior
 
-  test("span output uses console.error (for stderr)", () => {
+  test("span output uses process.stderr.write (bypasses Ink patchConsole)", () => {
     enableSpans()
     const log = createLogger("test")
 
@@ -366,7 +374,7 @@ describe("console method usage (patchConsole compatibility)", () => {
     }
 
     const spanOutput = consoleMock.findSpan()
-    expect(spanOutput!.level).toBe("error") // Spans go to stderr via console.error
+    expect(spanOutput!.level).toBe("stderr") // Spans bypass console, go directly to stderr
   })
 })
 

@@ -49,6 +49,12 @@ beforeEach(() => {
   vi.spyOn(console, "trace").mockImplementation((msg) => {
     consoleOutput.push({ level: "trace", message: String(msg) })
   })
+
+  // Spans use process.stderr.write to bypass Ink's patchConsole
+  vi.spyOn(process.stderr, "write").mockImplementation(((chunk: string | Uint8Array) => {
+    consoleOutput.push({ level: "stderr", message: String(chunk) })
+    return true
+  }) as typeof process.stderr.write)
 })
 
 afterEach(() => {

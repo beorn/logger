@@ -360,7 +360,7 @@ function writeLog(namespace: string, level: OutputLogLevel, message: string, dat
 
   if (suppressConsole) return
 
-  // Use console methods for Ink compatibility
+  // Use console methods for regular log messages
   switch (level) {
     case "trace":
     case "debug":
@@ -389,7 +389,7 @@ function writeSpan(namespace: string, duration: number, attrs: Record<string, un
       : formatConsole(namespace, "span", message, { duration, ...attrs })
 
   for (const w of writers) w(formatted, "span")
-  if (!suppressConsole) console.error(formatted)
+  if (!suppressConsole) process.stderr.write(formatted + "\n")
 }
 
 // ============ Implementation ============
