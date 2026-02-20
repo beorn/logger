@@ -16,6 +16,7 @@ import {
   getTraceFilter,
   setDebugFilter,
   getDebugFilter,
+  setOutputMode,
   resetIds,
   type Logger,
   type SpanLogger,
@@ -69,6 +70,7 @@ beforeEach(() => {
   disableSpans() // Start with spans disabled
   setTraceFilter(null) // Clear any trace filter
   setDebugFilter(null) // Clear any debug filter
+  setOutputMode("console") // Reset output mode
   consoleMock = createConsoleMock()
 })
 
@@ -904,5 +906,39 @@ describe("DEBUG namespace filtering", () => {
     const spans = consoleMock.findSpans()
     expect(spans).toHaveLength(1)
     expect(spans[0]!.message).toContain("myapp")
+  })
+})
+
+describe("setOutputMode", () => {
+  test("stderr mode routes writeLog to stderr", () => {
+    setOutputMode("stderr")
+    const log = createLogger("test")
+    log.info?.("hello")
+
+    const stderrOutput = consoleMock.output.filter((o) => o.level === "stderr")
+    expect(stderrOutput).toHaveLength(1)
+    expect(stderrOutput[0]!.message).toContain("hello")
+
+    // Should NOT appear in console output
+    const consoleOutput = consoleMock.output.filter((o) => o.level === "info")
+    expect(consoleOutput).toHaveLength(0)
+  })
+
+  test("writers-only mode suppresses all direct output", () => {
+    setOutputMode("writers-only")
+    const log = createLogger("test")
+    log.info?.("hello")
+
+    // No console or stderr output
+    expect(consoleMock.output).toHaveLength(0)
+  })
+
+  test("console mode (default) uses console methods", () => {
+    setOutputMode("console")
+    const log = createLogger("test")
+    log.info?.("hello")
+
+    const consoleOutput = consoleMock.output.filter((o) => o.level === "info")
+    expect(consoleOutput).toHaveLength(1)
   })
 })

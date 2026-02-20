@@ -100,6 +100,20 @@ export function setSuppressConsole(value: boolean): void {
   suppressConsole = value
 }
 
+/** Output mode for writeLog */
+export type OutputMode = "console" | "stderr" | "writers-only"
+let outputMode: OutputMode = "console"
+
+/** Set output mode for log messages (not spans — spans always use stderr). */
+export function setOutputMode(mode: OutputMode): void {
+  outputMode = mode
+}
+
+/** Get current output mode */
+export function getOutputMode(): OutputMode {
+  return outputMode
+}
+
 // ============ Configuration ============
 
 const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
@@ -358,9 +372,14 @@ function writeLog(namespace: string, level: OutputLogLevel, message: string, dat
 
   for (const w of writers) w(formatted, level)
 
-  if (suppressConsole) return
+  if (suppressConsole || outputMode === "writers-only") return
 
-  // Use console methods for regular log messages
+  if (outputMode === "stderr") {
+    process.stderr.write(formatted + "\n")
+    return
+  }
+
+  // Default: use console methods (captured by Ink's patchConsole for TUI panel)
   switch (level) {
     case "trace":
     case "debug":
