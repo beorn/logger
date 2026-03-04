@@ -44,6 +44,7 @@ import {
   createLogger,
   enableSpans,
   type ConditionalLogger,
+  type LazyMessage,
   type Logger,
   type SpanLogger,
   type SpanData,
@@ -305,15 +306,16 @@ export function createWorkerLogger(
 
   function log(
     level: "trace" | "debug" | "info" | "warn" | "error",
-    message: string,
+    message: LazyMessage,
     data?: Record<string, unknown>,
   ): void {
+    const resolved = typeof message === "function" ? message() : message
     try {
       postMessage({
         type: "log",
         level,
         namespace,
-        message,
+        message: resolved,
         data: data ? { ...props, ...data } : Object.keys(props).length > 0 ? props : undefined,
         timestamp: Date.now(),
       })
@@ -430,7 +432,7 @@ export function createWorkerLogger(
     debug: (msg, data) => log("debug", msg, data),
     info: (msg, data) => log("info", msg, data),
     warn: (msg, data) => log("warn", msg, data),
-    error: (msgOrError, data) => {
+    error: (msgOrError: LazyMessage | Error, data?: Record<string, unknown>) => {
       if (msgOrError instanceof Error) {
         log("error", msgOrError.message, {
           ...data,
@@ -450,8 +452,11 @@ export function createWorkerLogger(
 
     span: createSpan,
 
-    child(context: string): Logger {
-      return this.logger(context)
+    child(context: Record<string, unknown> | string): Logger {
+      if (typeof context === "string") {
+        return this.logger(context)
+      }
+      return createWorkerLogger(postMessage, namespace, { ...props, ...context }, options)
     },
 
     end(): void {

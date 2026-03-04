@@ -9,6 +9,13 @@
  * // Simple logging
  * log.info('starting')
  *
+ * // Lazy messages (function not called when level is disabled)
+ * log.debug?.(() => `expensive: ${computeState()}`)
+ *
+ * // Child loggers with context fields
+ * const reqLog = log.child({ requestId: 'abc' })
+ * reqLog.info('handling request')  // includes requestId in every message
+ *
  * // With timing (span)
  * {
  *   using task = log.span('import', { file: 'data.csv' })
@@ -18,6 +25,7 @@
  * }
  */
 
+import { openSync, writeSync, closeSync } from "fs"
 import pc from "picocolors"
 
 // ============ Types ============
@@ -27,6 +35,9 @@ export type OutputLogLevel = "trace" | "debug" | "info" | "warn" | "error"
 
 /** All log levels including silent (for filtering) */
 export type LogLevel = OutputLogLevel | "silent"
+
+/** Message can be a string or a lazy function that returns a string */
+export type LazyMessage = string | (() => string)
 
 /** Span data accessible via logger.spanData */
 export interface SpanData {
@@ -49,12 +60,12 @@ export interface Logger {
   /** Span data (non-null for span loggers, null for regular loggers) */
   readonly spanData: SpanData | null
 
-  // Logging methods
-  trace(message: string, data?: Record<string, unknown>): void
-  debug(message: string, data?: Record<string, unknown>): void
-  info(message: string, data?: Record<string, unknown>): void
-  warn(message: string, data?: Record<string, unknown>): void
-  error(message: string, data?: Record<string, unknown>): void
+  // Logging methods (accept string or lazy () => string)
+  trace(message: LazyMessage, data?: Record<string, unknown>): void
+  debug(message: LazyMessage, data?: Record<string, unknown>): void
+  info(message: LazyMessage, data?: Record<string, unknown>): void
+  warn(message: LazyMessage, data?: Record<string, unknown>): void
+  error(message: LazyMessage, data?: Record<string, unknown>): void
   /** Error overload - extracts message, stack, code from Error */
   error(error: Error, data?: Record<string, unknown>): void
 
@@ -64,7 +75,9 @@ export interface Logger {
   /** Create child span (extends namespace, inherits props, adds timing) */
   span(namespace?: string, props?: Record<string, unknown>): SpanLogger
 
-  /** @deprecated Use .logger() instead */
+  /** Create child logger with context fields merged into every message */
+  child(context: Record<string, unknown>): Logger
+  /** @deprecated Use .logger() instead for namespace-based children */
   child(context: string): Logger
 
   /** End span manually (alternative to using keyword) */
@@ -256,6 +269,30 @@ export function getDebugFilter(): string[] | null {
   return result
 }
 
+// ============ Log Format ============
+
+/** Output format: human-readable console or structured JSON */
+export type LogFormat = "console" | "json"
+
+// Initialize from LOG_FORMAT env var, falling back to auto-detect
+const envLogFormat = process.env.LOG_FORMAT?.toLowerCase()
+let currentLogFormat: LogFormat = envLogFormat === "json" ? "json" : envLogFormat === "console" ? "console" : "console"
+
+/** Set log output format */
+export function setLogFormat(format: LogFormat): void {
+  currentLogFormat = format
+}
+
+/** Get current log output format */
+export function getLogFormat(): LogFormat {
+  return currentLogFormat
+}
+
+/** Determine whether to use JSON formatting for the current call */
+function useJsonFormat(): boolean {
+  return currentLogFormat === "json" || process.env.NODE_ENV === "production" || process.env.TRACE_FORMAT === "json"
+}
+
 // ============ ID Generation ============
 
 let spanIdCounter = 0
@@ -361,14 +398,26 @@ function shouldDebugNamespace(namespace: string): boolean {
   return true
 }
 
-function writeLog(namespace: string, level: OutputLogLevel, message: string, data?: Record<string, unknown>): void {
+/** Resolve a lazy message: if it's a function, call it; otherwise return the string */
+function resolveMessage(msg: LazyMessage): string {
+  return typeof msg === "function" ? msg() : msg
+}
+
+function writeLog(
+  namespace: string,
+  level: OutputLogLevel,
+  message: LazyMessage,
+  data?: Record<string, unknown>,
+): void {
   if (!shouldLog(level)) return
   if (!shouldDebugNamespace(namespace)) return
 
-  const formatted =
-    process.env.NODE_ENV === "production" || process.env.TRACE_FORMAT === "json"
-      ? formatJSON(namespace, level, message, data)
-      : formatConsole(namespace, level, message, data)
+  // Resolve lazy message only after level/namespace checks pass
+  const resolved = resolveMessage(message)
+
+  const formatted = useJsonFormat()
+    ? formatJSON(namespace, level, resolved, data)
+    : formatConsole(namespace, level, resolved, data)
 
   for (const w of writers) w(formatted, level)
 
@@ -402,10 +451,9 @@ function writeSpan(namespace: string, duration: number, attrs: Record<string, un
   if (!shouldDebugNamespace(namespace)) return
 
   const message = `(${duration}ms)`
-  const formatted =
-    process.env.NODE_ENV === "production" || process.env.TRACE_FORMAT === "json"
-      ? formatJSON(namespace, "span", message, { duration, ...attrs })
-      : formatConsole(namespace, "span", message, { duration, ...attrs })
+  const formatted = useJsonFormat()
+    ? formatJSON(namespace, "span", message, { duration, ...attrs })
+    : formatConsole(namespace, "span", message, { duration, ...attrs })
 
   for (const w of writers) w(formatted, "span")
   if (!suppressConsole) process.stderr.write(formatted + "\n")
@@ -430,7 +478,7 @@ function createLoggerImpl(
   parentSpanId: string | null,
   traceId: string | null,
 ): Logger {
-  const log = (level: OutputLogLevel, msgOrError: string | Error, data?: Record<string, unknown>): void => {
+  const log = (level: OutputLogLevel, msgOrError: LazyMessage | Error, data?: Record<string, unknown>): void => {
     if (msgOrError instanceof Error) {
       const err = msgOrError
       writeLog(name, level, err.message, {
@@ -535,9 +583,13 @@ function createLoggerImpl(
       return spanLogger
     },
 
-    // Deprecated - use .logger() instead
-    child(context: string): Logger {
-      return this.logger(context)
+    child(context: string | Record<string, unknown>): Logger {
+      if (typeof context === "string") {
+        // Deprecated string overload - use .logger() instead
+        return this.logger(context)
+      }
+      // Context object overload: merge context fields into props
+      return createLoggerImpl(name, { ...props, ...context }, null, parentSpanId, traceId)
     },
 
     end(): void {
@@ -585,6 +637,102 @@ export function clearCollectedSpans(): void {
   collectedSpans.length = 0
 }
 
+// ============ Async File Writer ============
+
+/** Options for creating an async buffered file writer */
+export interface FileWriterOptions {
+  /** Buffer size threshold in bytes before flushing (default: 4096) */
+  bufferSize?: number
+  /** Flush interval in milliseconds (default: 100) */
+  flushInterval?: number
+}
+
+/** An async buffered file writer with automatic flushing */
+export interface FileWriter {
+  /** Write a line to the buffer (appends newline) */
+  write(line: string): void
+  /** Flush the buffer immediately */
+  flush(): void
+  /** Close the writer and flush remaining buffer */
+  close(): void
+}
+
+/**
+ * Create an async buffered file writer for log output.
+ * Buffers writes and flushes on size threshold or interval.
+ * Registers a process.on('exit') handler to flush remaining buffer.
+ *
+ * @param filePath - Path to the log file (opened in append mode)
+ * @param options - Buffer size and flush interval configuration
+ * @returns FileWriter with write, flush, and close methods
+ *
+ * @example
+ * const writer = createFileWriter('/tmp/app.log')
+ * const unsubscribe = addWriter((formatted) => writer.write(formatted))
+ *
+ * // On shutdown:
+ * unsubscribe()
+ * writer.close()
+ */
+export function createFileWriter(filePath: string, options: FileWriterOptions = {}): FileWriter {
+  const bufferSize = options.bufferSize ?? 4096
+  const flushInterval = options.flushInterval ?? 100
+
+  let buffer = ""
+  let fd: number | null = null
+  let timer: ReturnType<typeof setInterval> | null = null
+  let closed = false
+
+  // Open file in append mode
+  fd = openSync(filePath, "a")
+
+  /** Flush buffer contents to disk synchronously */
+  function flush(): void {
+    if (buffer.length === 0 || fd === null) return
+    const data = buffer
+    buffer = ""
+    writeSync(fd, data)
+  }
+
+  // Set up periodic flush
+  timer = setInterval(flush, flushInterval)
+  // Don't let the timer keep the process alive
+  if (timer && typeof timer === "object" && "unref" in timer) {
+    ;(timer as { unref(): void }).unref()
+  }
+
+  // Flush on process exit to avoid data loss
+  const exitHandler = (): void => flush()
+  process.on("exit", exitHandler)
+
+  return {
+    write(line: string): void {
+      if (closed) return
+      buffer += line + "\n"
+      if (buffer.length >= bufferSize) {
+        flush()
+      }
+    },
+
+    flush,
+
+    close(): void {
+      if (closed) return
+      closed = true
+      if (timer !== null) {
+        clearInterval(timer)
+        timer = null
+      }
+      flush()
+      if (fd !== null) {
+        closeSync(fd)
+        fd = null
+      }
+      process.removeListener("exit", exitHandler)
+    },
+  }
+}
+
 // ============ Conditional Logger (Zero-Overhead Pattern) ============
 
 /**
@@ -599,17 +747,19 @@ export interface ConditionalLogger {
   readonly props: Readonly<Record<string, unknown>>
   readonly spanData: SpanData | null
 
-  trace?: (message: string, data?: Record<string, unknown>) => void
-  debug?: (message: string, data?: Record<string, unknown>) => void
-  info?: (message: string, data?: Record<string, unknown>) => void
-  warn?: (message: string, data?: Record<string, unknown>) => void
+  trace?: (message: LazyMessage, data?: Record<string, unknown>) => void
+  debug?: (message: LazyMessage, data?: Record<string, unknown>) => void
+  info?: (message: LazyMessage, data?: Record<string, unknown>) => void
+  warn?: (message: LazyMessage, data?: Record<string, unknown>) => void
   error?: {
-    (message: string, data?: Record<string, unknown>): void
+    (message: LazyMessage, data?: Record<string, unknown>): void
     (error: Error, data?: Record<string, unknown>): void
   }
 
   logger(namespace?: string, props?: Record<string, unknown>): Logger
   span(namespace?: string, props?: Record<string, unknown>): SpanLogger
+  child(context: Record<string, unknown>): Logger
+  child(context: string): Logger
   end(): void
 }
 
