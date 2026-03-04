@@ -27,7 +27,7 @@ import {
 } from "../src/index.ts"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const parseJSON = (s: string): Record<string, any> => parseJSON(s)
+const parseJSON = (s: string): Record<string, any> => JSON.parse(s)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Helpers
