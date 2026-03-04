@@ -200,6 +200,44 @@ log.info?.("starting") // Enabled when level=info
 
 See [docs/conditional-logging-research.md](docs/conditional-logging-research.md) for detailed research and external references.
 
+## Lazy Messages
+
+Messages can be functions — only called when the log level is enabled:
+
+```typescript
+log.debug?.(() => `expensive: ${JSON.stringify(bigObject)}`)
+// Function never called when debug is disabled
+```
+
+Type: `LazyMessage = string | (() => string)`
+
+## Child Context Loggers
+
+Create child loggers with additional structured context (not just namespace):
+
+```typescript
+const child = log.child({ requestId: "abc-123", userId: 42 })
+child.info?.("handling request")
+// → 14:32:15 INFO myapp handling request {requestId: "abc-123", userId: 42}
+```
+
+## JSON Output Format
+
+```bash
+LOG_FORMAT=json bun run app   # Force JSON output in any environment
+```
+
+In addition to `TRACE_FORMAT=json` and `NODE_ENV=production`, `LOG_FORMAT=json` explicitly enables structured JSON output.
+
+## File Writer
+
+```typescript
+import { createFileWriter } from "@beorn/logger"
+
+const writer = createFileWriter("/tmp/app.log")
+const log = createLogger("myapp", { writer })
+```
+
 ## Best Practices
 
 1. **Namespace hierarchy**: Use `:` to create hierarchy (`myapp:db:query`)
