@@ -1,7 +1,13 @@
 {
   "name": "@beorn/logger",
   "version": "0.2.0",
-  "description": "Structured logging with colors/JSON output",
+  "description": "Structured logging with spans. ~3KB, zero-overhead disabled logging via optional chaining.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/beorn/logger.git"
+  },
+  "keywords": ["logger", "logging", "structured", "spans", "tracing", "typescript", "zero-overhead", "optional-chaining"],
   "type": "module",
   "module": "src/index.ts",
   "types": "./dist/index.d.ts",
@@ -18,13 +24,17 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "bunx --bun vitest run"
+    "test": "bunx --bun vitest run",
+    "docs:dev": "vitepress dev docs/site",
+    "docs:build": "vitepress build docs/site",
+    "docs:preview": "vitepress preview docs/site"
   },
   "dependencies": {
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",
+    "vitepress": "^1.6.3",
     "vitest": "^4.0.18"
   }
 }

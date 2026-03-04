@@ -1,91 +1,258 @@
 # @beorn/logger
 
+[![Tests](https://github.com/beorn/logger/actions/workflows/test.yml/badge.svg)](https://github.com/beorn/logger/actions/workflows/test.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Structured logging with spans. Logger-first architecture: Span = Logger + Duration.
+Structured logging with built-in spans. **~3KB**, one dependency ([picocolors](https://github.com/alexeyraspopov/picocolors)).
 
-## Installation
+The core idea: every logger is a potential span. Call `.span()` and it becomes one -- with automatic timing, parent-child tracking, and trace IDs. No separate tracing library needed.
+
+## Install
 
 ```bash
-bun add @beorn/logger
+bun add @beorn/logger    # or: npm install @beorn/logger
 ```
 
-## Quickstart
+## Quick Start
 
 ```typescript
 import { createLogger } from "@beorn/logger"
 
 const log = createLogger("myapp")
 
-log.info("starting")
-log.error(new Error("failed"))
+log.info?.("server started", { port: 3000 })
+log.debug?.("cache hit", { key: "user:42" })
+log.error?.(new Error("connection lost"))
 
-// Spans for timing (implements Disposable)
+// Spans time operations automatically
 {
-  using span = log.span("import", { file: "data.csv" })
-  span.info("working...")
-  span.spanData.count = 42
+  using span = log.span("db:query", { table: "users" })
+  const users = await db.query("SELECT * FROM users")
+  span.spanData.count = users.length
 }
-// Output: SPAN myapp:import (15ms) {count: 42, file: "data.csv"}
+// Output: SPAN myapp:db:query (45ms) {count: 100, table: "users"}
 ```
+
+## Why Another Logger?
+
+Most loggers waste work when logging is disabled:
+
+```typescript
+// Pino, Winston, Bunyan -- args are ALWAYS evaluated
+log.debug(`state: ${JSON.stringify(computeExpensiveState())}`)
+// computeExpensiveState() runs even when debug is off
+```
+
+@beorn/logger uses optional chaining to skip argument evaluation entirely:
+
+```typescript
+// @beorn/logger -- args are NOT evaluated when disabled
+log.debug?.(`state: ${JSON.stringify(computeExpensiveState())}`)
+// computeExpensiveState() never runs when debug is off -- 22x faster
+```
+
+| Scenario            | Traditional (noop) | Optional chaining (`?.`) |
+| ------------------- | ------------------ | ------------------------ |
+| Cheap args disabled  | 2168M ops/s (0.5ns) | 1406M ops/s (0.7ns)    |
+| **Expensive args disabled** | **17M ops/s (57.6ns)** | **408M ops/s (2.5ns)** |
+
+For cheap arguments the difference is negligible (~0.2ns). For expensive arguments -- string interpolation, JSON serialization, state computation -- optional chaining is **22x faster**.
 
 ## Features
 
-- **Namespace hierarchy** - Organize logs with `:` separators (`myapp:db:query`)
-- **Spans for timing** - TC39 `using` keyword with automatic duration tracking
-- **Conditional logging** - Optional chaining skips argument evaluation when disabled
-- **Namespace filtering** - `DEBUG=myapp` filters output like the `debug` package, with negative patterns
-- **Environment control** - Configure via `LOG_LEVEL`, `DEBUG`, `TRACE`, `TRACE_FORMAT`
-- **Dual output** - Pretty console in dev, JSON in production
+### Namespace Hierarchy
 
-## Zero-Overhead Logging
-
-`createLogger` returns `undefined` for disabled levels. Use optional chaining to skip expensive argument evaluation:
+Organize logs with `:` separators. Child loggers inherit parent context.
 
 ```typescript
-import { createLogger } from "@beorn/logger"
+const log = createLogger("myapp", { version: "2.1" })
+const db = log.logger("db")       // myapp:db
+const cache = log.logger("cache") // myapp:cache
 
-const log = createLogger("myapp")
-
-// Info/warn/error always enabled at default level
-log.info("starting")
-
-// Debug/trace use optional chaining - args NOT evaluated when disabled
-log.debug?.(`expensive: ${computeExpensiveState()}`)
+db.info?.("connected")
+// 14:32:15 INFO myapp:db connected {version: "2.1"}
 ```
 
-### Benchmark Results
+### Spans
 
-| Scenario                  | ops/s    | ns/op   | Notes                               |
-| ------------------------- | -------- | ------- | ----------------------------------- |
-| noop (cheap args)         | 2168M    | 0.5     | Fastest for trivial args            |
-| `?.` (cheap args)         | 1406M    | 0.7     | ~0.2ns overhead - negligible        |
-| noop (expensive args)     | 17M      | 57.6    | Args still evaluated                |
-| **`?.` (expensive args)** | **408M** | **2.5** | Args NOT evaluated - **22x faster** |
+Time any operation with `using`. Spans are loggers with duration tracking, parent-child relationships, and trace IDs.
+
+```typescript
+{
+  using span = log.span("import", { file: "data.csv" })
+  span.info?.("parsing rows")
+  span.spanData.rowCount = await importFile()
+}
+// SPAN myapp:import (1234ms) {rowCount: 500, file: "data.csv"}
+```
+
+Spans nest automatically:
+
+```typescript
+{
+  using request = log.span("request", { path: "/api/users" })
+  {
+    using db = request.span("db:query")
+    // db.spanData.traceId === request.spanData.traceId
+    await fetchUsers()
+  }
+  {
+    using cache = request.span("cache:set")
+    await cacheResults()
+  }
+}
+```
+
+### Lazy Messages
+
+Pass a function when the message itself is expensive to construct:
+
+```typescript
+log.debug?.(() => `tree: ${JSON.stringify(buildDebugTree())}`)
+// Function only called when debug is enabled
+```
+
+### Child Context
+
+Create loggers with structured context that appears in every message:
+
+```typescript
+const reqLog = log.child({ requestId: "abc-123", userId: 42 })
+reqLog.info?.("handling request")
+// 14:32:15 INFO myapp handling request {requestId: "abc-123", userId: 42}
+
+// Context accumulates through the chain
+const dbLog = reqLog.child({ pool: "primary" })
+// Has: requestId, userId, pool
+```
+
+### Dual Output Format
+
+Pretty console in development, structured JSON in production:
+
+```bash
+# Development (default)
+bun run app
+# 14:32:15 INFO myapp server started {port: 3000}
+
+# Production
+NODE_ENV=production bun run app
+# {"time":"2026-01-15T14:32:15.123Z","level":"info","name":"myapp","msg":"server started","port":3000}
+
+# Explicit JSON
+LOG_FORMAT=json bun run app
+```
+
+### File Writer
+
+Buffer log output to files with automatic flushing:
+
+```typescript
+import { createFileWriter, addWriter } from "@beorn/logger"
+
+const writer = createFileWriter("/tmp/app.log", {
+  bufferSize: 4096,    // Flush when buffer exceeds 4KB
+  flushInterval: 100,  // Or every 100ms, whichever comes first
+})
+
+const unsubscribe = addWriter((formatted) => writer.write(formatted))
+
+// On shutdown:
+unsubscribe()
+writer.close()
+```
+
+### Worker Thread Support
+
+Forward logs from worker threads to the main thread:
+
+```typescript
+// Worker side
+import { createWorkerLogger } from "@beorn/logger/worker"
+const log = createWorkerLogger(postMessage, "myapp:worker")
+
+log.info?.("processing", { file: "data.csv" })
+{
+  using span = log.span("parse")
+  span.spanData.lines = 100
+}
+
+// Main thread side
+import { createWorkerLogHandler } from "@beorn/logger/worker"
+const handle = createWorkerLogHandler()
+worker.onmessage = (e) => handle(e.data)
+```
 
 ## Environment Variables
 
-| Variable       | Values                                  | Effect                     |
-| -------------- | --------------------------------------- | -------------------------- |
-| `LOG_LEVEL`    | trace, debug, info, warn, error, silent | Filter output by level     |
-| `DEBUG`        | \*, namespace prefixes, -prefix         | Filter output by namespace |
-| `TRACE`        | 1, true, or namespace prefixes          | Enable span output         |
-| `TRACE_FORMAT` | json                                    | Force JSON output          |
-| `NODE_ENV`     | production                              | Auto-enable JSON format    |
+| Variable       | Values                                  | Effect                        |
+| -------------- | --------------------------------------- | ----------------------------- |
+| `LOG_LEVEL`    | trace, debug, info, warn, error, silent | Minimum output level          |
+| `LOG_FORMAT`   | console, json                           | Output format                 |
+| `DEBUG`        | `*`, namespace prefixes, `-prefix`      | Namespace filter (like `debug` package) |
+| `TRACE`        | `1`, `true`, or namespace prefixes      | Enable span output            |
+| `TRACE_FORMAT` | json                                    | Force JSON for spans          |
+| `NODE_ENV`     | production                              | Auto-enable JSON format       |
 
 ```bash
-LOG_LEVEL=debug bun run app         # Enable debug logging
-DEBUG=myapp bun run app             # Only show myapp (+ children), auto-enables debug level
-DEBUG='myapp,-myapp:noisy' bun run app  # Show myapp but exclude myapp:noisy
-TRACE=1 bun run app                 # Enable all span timing output
-TRACE=myapp:import bun run app      # Enable spans for specific namespace
+LOG_LEVEL=debug bun run app              # Show debug and above
+DEBUG=myapp bun run app                  # Only myapp namespace (auto-enables debug level)
+DEBUG='myapp,-myapp:noisy' bun run app   # Exclude noisy sub-namespace
+TRACE=1 bun run app                      # Enable all span output
+TRACE=myapp:db bun run app               # Spans for specific namespace only
 ```
+
+## API
+
+### Core
+
+| Function | Description |
+| --- | --- |
+| `createLogger(name, props?)` | Create a conditional logger (disabled levels return `undefined`) |
+| `setLogLevel(level)` / `getLogLevel()` | Set/get minimum log level |
+| `setLogFormat(format)` / `getLogFormat()` | Set/get output format (`"console"` or `"json"`) |
+| `enableSpans()` / `disableSpans()` / `spansAreEnabled()` | Control span output |
+| `setTraceFilter(namespaces)` / `getTraceFilter()` | Filter span output by namespace |
+| `setDebugFilter(namespaces)` / `getDebugFilter()` | Filter log output by namespace |
+
+### Logger Methods
+
+| Method | Description |
+| --- | --- |
+| `.trace?.(msg, data?)` | Verbose debugging |
+| `.debug?.(msg, data?)` | Debug information |
+| `.info?.(msg, data?)` | Normal operation |
+| `.warn?.(msg, data?)` | Recoverable issues |
+| `.error?.(msg \| Error, data?)` | Failures |
+| `.logger(namespace?, props?)` | Create child logger |
+| `.span(namespace?, props?)` | Create timed span (implements `Disposable`) |
+| `.child(context)` | Create child with context fields |
+
+### Writers
+
+| Function | Description |
+| --- | --- |
+| `addWriter(fn)` | Add output writer, returns unsubscribe |
+| `createFileWriter(path, opts?)` | Buffered file writer with auto-flush |
+| `setOutputMode(mode)` | `"console"`, `"stderr"`, or `"writers-only"` |
+| `setSuppressConsole(bool)` | Suppress console output (writers still receive) |
+
+### Worker Thread
+
+| Function | Module | Description |
+| --- | --- | --- |
+| `createWorkerLogger(postMessage, ns, props?)` | `@beorn/logger/worker` | Logger that forwards to main thread |
+| `createWorkerLogHandler(opts?)` | `@beorn/logger/worker` | Main thread handler for worker messages |
+| `forwardConsole(postMessage, ns?)` | `@beorn/logger/worker` | Forward `console.*` from worker |
 
 ## Documentation
 
-See [docs/](docs/) for detailed API documentation and research notes.
+- [API Reference](docs/api-reference.md) -- Complete API documentation
+- [Comparison](docs/comparison.md) -- vs Pino, Winston, Bunyan, debug
+- [Migration from debug](docs/migration-from-debug.md) -- Step-by-step migration guide
+- [Conditional Logging Research](docs/conditional-logging-research.md) -- Benchmarks and design rationale
 
 ## License
 
-MIT
+[MIT](LICENSE)

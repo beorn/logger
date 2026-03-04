@@ -257,27 +257,16 @@ debug("done in %dms", Date.now() - start)
 }
 ```
 
-### 8. Enable Conditional Logging (Optional)
+### 8. Use Optional Chaining (Recommended)
 
-For hot paths, use the conditional logging pattern:
+`createLogger()` returns `undefined` for disabled levels -- just use `?.`:
 
 ```typescript
-// Create conditional logger
-const baseLog = createLogger("myapp")
-const LEVELS = { trace: 0, debug: 1, info: 2, warn: 3, error: 4, silent: 5 }
+const log = createLogger("myapp")
 
-export const log = new Proxy(baseLog, {
-  get(target, prop: string) {
-    if (prop in LEVELS) {
-      const current = LEVELS[getLogLevel() as keyof typeof LEVELS]
-      if (LEVELS[prop as keyof typeof LEVELS] < current) return undefined
-    }
-    return (target as any)[prop]
-  },
-})
-
-// Use optional chaining
+// Optional chaining skips argument evaluation when level is disabled
 log.debug?.(`expensive: ${computeState()}`)
+log.trace?.(() => `very expensive: ${JSON.stringify(bigObj)}`)
 ```
 
 ## Verification

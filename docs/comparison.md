@@ -12,7 +12,7 @@ How @beorn/logger compares to popular Node.js logging libraries.
 | **Spans/Tracing**      | Built-in      | No      | No        | No        | No        |
 | **Zero-cost Disabled** | Yes (`?.`)    | No      | No        | No        | No        |
 | **Child Loggers**      | Yes           | Yes     | Yes       | Yes       | Manual    |
-| **Transports**         | No            | Yes     | Yes       | Yes       | No        |
+| **Transports**         | File writer   | Yes     | Yes       | Yes       | No        |
 | **Pretty Print**       | Auto (dev)    | Plugin  | Plugin    | Plugin    | Yes       |
 | **Browser Support**    | Partial       | Yes     | Yes       | Yes       | Yes       |
 | **Bundle Size**        | ~3KB          | ~17KB   | ~200KB+   | ~30KB     | ~2KB      |
@@ -35,7 +35,7 @@ How @beorn/logger compares to popular Node.js logging libraries.
 | ------------------ | ------------------------------ | -------------------------------- |
 | Zero-cost disabled | Noop function (args evaluated) | Optional chaining (args skipped) |
 | Spans              | External (pino-opentelemetry)  | Built-in                         |
-| Transports         | Built-in (worker threads)      | None (stdout only)               |
+| Transports         | Built-in (worker threads)      | File writer + custom via addWriter |
 | Formatters         | Plugin system                  | Console/JSON auto-switch         |
 | Serializers        | Configurable                   | Fixed (Error auto-handled)       |
 

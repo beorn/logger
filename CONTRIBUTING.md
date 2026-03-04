@@ -1,22 +1,13 @@
 # Contributing to @beorn/logger
 
-Thank you for your interest in contributing to @beorn/logger!
-
 ## Development Setup
 
 ```bash
-# Clone the repository
 git clone https://github.com/beorn/logger.git
 cd logger
-
-# Install dependencies
 bun install
-
-# Run tests
-bun test
-
-# Run tests in watch mode
-bun test --watch
+bun run test        # Run tests
+bun run typecheck   # Type check
 ```
 
 ## Code Style
@@ -31,42 +22,36 @@ bun test --watch
 All changes should include tests. Run the test suite before submitting:
 
 ```bash
-bun test
+bun run test
 ```
 
-### Test Output Rules
+Tests must be silent on success. Use `vi.spyOn(console, 'log').mockImplementation(() => {})` to suppress output in tests.
 
-Tests must be silent on success. Use `vi.spyOn(console, 'log').mockImplementation(() => {})` if your test needs to suppress output.
-
-## Pull Request Process
+## Pull Requests
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Add tests for new functionality
-5. Ensure all tests pass
-6. Update documentation if needed
-7. Commit with conventional commit messages (`feat:`, `fix:`, `docs:`, etc.)
-8. Push and open a pull request
+3. Make your changes with tests
+4. Ensure `bun run test` and `bun run typecheck` pass
+5. Commit with [conventional commit](https://conventionalcommits.org/) messages
+6. Push and open a pull request
 
 ## Commit Messages
 
-Follow [Conventional Commits](https://conventionalcommits.org/):
-
-- `feat: add new feature` - New features
-- `fix: resolve bug` - Bug fixes
-- `docs: update readme` - Documentation only
-- `test: add tests` - Test additions
-- `refactor: simplify code` - Code changes that neither fix bugs nor add features
-- `chore: update deps` - Maintenance tasks
+- `feat:` -- New features
+- `fix:` -- Bug fixes
+- `docs:` -- Documentation only
+- `test:` -- Test additions
+- `refactor:` -- Code changes that neither fix bugs nor add features
+- `chore:` -- Maintenance tasks
 
 ## Design Principles
 
-1. **Logger-first architecture** - Spans are loggers with timing, not separate concepts
-2. **Minimal API surface** - Prefer fewer, well-designed functions
-3. **Type safety** - Leverage TypeScript for correctness
-4. **Performance** - Optional chaining pattern for zero-cost disabled logs
-5. **Structured output** - JSON by default, human-readable for development
+1. **Logger-first** -- Spans are loggers with timing, not separate concepts
+2. **Minimal surface** -- Few, well-designed functions
+3. **Type safe** -- TypeScript enforces correct usage (e.g., `?.` for disabled levels)
+4. **Zero-cost** -- Optional chaining skips argument evaluation when disabled
+5. **Structured** -- JSON in production, readable console in development
 
 ## Questions?
 
