@@ -2,12 +2,15 @@
  * @beorn/logger Benchmark Suite
  *
  * Compares zero-overhead disabled logging and enabled logging performance
- * against popular alternatives: pino, winston, debug, consola, loglevel.
+ * against popular alternatives: pino, winston, debug.
+ *
+ * All "enabled" benchmarks use the same kind of sink (noop writer) for a fair
+ * apples-to-apples comparison of formatting + serialization throughput.
  *
  * Run: bun benchmarks/overhead.ts
  */
 
-import { createLogger, setLogLevel, setOutputMode, setSuppressConsole, disableSpans } from "../src/index.ts"
+import { addWriter, createLogger, setLogLevel, setOutputMode, setSuppressConsole, disableSpans } from "../src/index.ts"
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -62,43 +65,74 @@ function expensiveArg(): string {
   return JSON.stringify({ a: 1, b: 2, c: [3, 4, 5], d: { e: "hello", f: true } })
 }
 
+// ── Noop stream (shared sink type for fair enabled comparisons) ──────────────
+
+const { Writable } = await import("stream")
+const noopStream = () =>
+  new Writable({
+    write(_chunk: unknown, _encoding: string, callback: () => void) {
+      callback()
+    },
+  })
+
 // ── @beorn/logger setup ──────────────────────────────────────────────────────
 
 const beornLog = createLogger("bench")
-// Suppress all output for benchmarking
+// Route all output to noop writer, suppress console
 setSuppressConsole(true)
 setOutputMode("writers-only")
+addWriter(() => {}) // noop writer — receives formatted output, discards it
 disableSpans()
 
 // ── Pino setup ───────────────────────────────────────────────────────────────
 
-let pinoLog: { debug: (msg: string) => void; info: (msg: string) => void; warn: (msg: string) => void }
+type LogFn = {
+  (msg: string): void
+  (obj: Record<string, unknown>, msg: string): void
+}
+
+interface BenchLogger {
+  debug: LogFn
+  info: LogFn
+  warn: LogFn
+}
+
+// Disabled pino (level=warn, debug/info disabled) — second arg = noop stream
+// Enabled pino (level=debug, all levels active) — second arg = noop stream
+let pinoDisabled: BenchLogger
+let pinoEnabled: BenchLogger
 try {
   const pino = (await import("pino")).default
-  pinoLog = pino({
-    level: "warn", // debug disabled
-    transport: undefined, // no transport overhead
-    // Write to devnull equivalent
-    destination: { write: () => true } as unknown as ReturnType<typeof pino.destination>,
-  })
+  pinoDisabled = pino({ level: "warn" }, noopStream())
+  pinoEnabled = pino({ level: "debug" }, noopStream())
 } catch {
-  console.log("⚠ pino not installed — install with: bun add -d pino")
-  pinoLog = { debug: () => {}, info: () => {}, warn: () => {} }
+  console.log("pino not installed — install with: bun add -d pino")
+  const stub: BenchLogger = { debug: () => {}, info: () => {}, warn: () => {} }
+  pinoDisabled = stub
+  pinoEnabled = stub
 }
 
 // ── Winston setup ────────────────────────────────────────────────────────────
 
-let winstonLog: { debug: (msg: string) => void; info: (msg: string) => void; warn: (msg: string) => void }
+// Disabled winston (level=warn, debug/info disabled)
+// Enabled winston (level=debug, all levels active) — noop stream transport
+let winstonDisabled: BenchLogger
+let winstonEnabled: BenchLogger
 try {
   const winston = await import("winston")
-  winstonLog = winston.createLogger({
-    level: "warn", // debug disabled
-    silent: false,
+  winstonDisabled = winston.createLogger({
+    level: "warn",
     transports: [new winston.transports.Console({ silent: true })],
   })
+  winstonEnabled = winston.createLogger({
+    level: "debug",
+    transports: [new winston.transports.Stream({ stream: noopStream() })],
+  })
 } catch {
-  console.log("⚠ winston not installed — install with: bun add -d winston")
-  winstonLog = { debug: () => {}, info: () => {}, warn: () => {} }
+  console.log("winston not installed — install with: bun add -d winston")
+  const stub: BenchLogger = { debug: () => {}, info: () => {}, warn: () => {} }
+  winstonDisabled = stub
+  winstonEnabled = stub
 }
 
 // ── Debug setup ──────────────────────────────────────────────────────────────
@@ -108,7 +142,7 @@ try {
   const debug = (await import("debug")).default
   debugFn = debug("bench") // DEBUG env not set → disabled
 } catch {
-  console.log("⚠ debug not installed — install with: bun add -d debug")
+  console.log("debug not installed — install with: bun add -d debug")
   debugFn = () => {}
 }
 
@@ -125,6 +159,8 @@ console.log(`Iterations: ${(N / 1e6).toFixed(0)}M per test`)
 console.log(`Runtime: Bun ${Bun.version}`)
 console.log(`Platform: ${process.platform} ${process.arch}`)
 
+// ─── PART 1: DISABLED LOGGING ────────────────────────────────────────────────
+
 // 1. Disabled debug call — cheap args
 {
   setLogLevel("warn") // debug disabled
@@ -132,8 +168,8 @@ console.log(`Platform: ${process.platform} ${process.arch}`)
   const results = [
     measure("noop()", () => noop(), N),
     measure("beorn: log.debug?.(str)", () => beornLog.debug?.("hello"), N),
-    measure("pino: log.debug(str)", () => pinoLog.debug("hello"), N),
-    measure("winston: log.debug(str)", () => winstonLog.debug("hello"), N),
+    measure("pino: log.debug(str)", () => pinoDisabled.debug("hello"), N),
+    measure("winston: log.debug(str)", () => winstonDisabled.debug("hello"), N),
     measure('debug: debug("hello")', () => debugFn("hello"), N),
   ]
 
@@ -147,28 +183,66 @@ console.log(`Platform: ${process.platform} ${process.arch}`)
   const results = [
     measure("noop(expensive)", () => noop(), N),
     measure("beorn: log.debug?.(expensive)", () => beornLog.debug?.(`state: ${expensiveArg()}`), N),
-    measure("pino: log.debug(expensive)", () => pinoLog.debug(`state: ${expensiveArg()}`), N),
-    measure("winston: log.debug(expensive)", () => winstonLog.debug(`state: ${expensiveArg()}`), N),
+    measure("pino: log.debug(expensive)", () => pinoDisabled.debug(`state: ${expensiveArg()}`), N),
+    measure("winston: log.debug(expensive)", () => winstonDisabled.debug(`state: ${expensiveArg()}`), N),
     measure("debug: debug(expensive)", () => debugFn(`state: ${expensiveArg()}`), N),
   ]
 
   printResults("DISABLED DEBUG — expensive argument (JSON.stringify)", results)
 }
 
-// 3. Enabled info call — cheap args
+// ─── PART 2: ENABLED LOGGING (all to noop writers) ───────────────────────────
+// Fair comparison: all loggers format + serialize, all write to noop sinks.
+// beorn: addWriter(noop) + setSuppressConsole(true) + setOutputMode("writers-only")
+// pino: pino(opts, noopWritableStream)
+// winston: Stream transport with noop Writable
+
+// 3. Enabled info — cheap args (string literal)
 {
   setLogLevel("info") // info enabled
 
   const results = [
     measure("beorn: log.info?.(str)", () => beornLog.info?.("hello"), N / 10),
-    measure("pino: log.info(str)", () => pinoLog.info("hello"), N / 10),
-    measure("winston: log.info(str)", () => winstonLog.info("hello"), N / 10),
+    measure("pino: log.info(str)", () => pinoEnabled.info("hello"), N / 10),
+    measure("winston: log.info(str)", () => winstonEnabled.info("hello"), N / 10),
   ]
 
-  printResults("ENABLED INFO — cheap argument (string literal)", results)
+  printResults("ENABLED INFO — cheap argument (string literal) — all to noop sink", results)
 }
 
-// 4. Span creation + disposal
+// 4. Enabled info — structured data
+{
+  setLogLevel("info") // info enabled
+
+  const structuredData = { key: "value", count: 42 }
+
+  const results = [
+    measure("beorn: log.info?.(str, data)", () => beornLog.info?.("request", structuredData), N / 10),
+    measure("pino: log.info(obj, str)", () => pinoEnabled.info(structuredData, "request"), N / 10),
+    measure("winston: log.info(str, data)", () => winstonEnabled.info("request", structuredData), N / 10),
+  ]
+
+  printResults("ENABLED INFO — structured data ({ key, count }) — all to noop sink", results)
+}
+
+// 5. Enabled warn — with Error object
+{
+  setLogLevel("warn") // warn enabled
+
+  const err = new Error("something broke")
+
+  const results = [
+    measure("beorn: log.warn?.(Error)", () => beornLog.warn?.(err), N / 10),
+    measure("pino: log.warn(Error)", () => pinoEnabled.warn({ err }, "something broke"), N / 10),
+    measure("winston: log.warn(str, Error)", () => winstonEnabled.warn("something broke", { error: err }), N / 10),
+  ]
+
+  printResults("ENABLED WARN — Error object — all to noop sink", results)
+}
+
+// ─── PART 3: SPANS ──────────────────────────────────────────────────────────
+
+// 6. Span creation + disposal
 {
   setLogLevel("warn")
   disableSpans()
@@ -189,4 +263,5 @@ console.log(`Platform: ${process.platform} ${process.arch}`)
 console.log("\n" + "─".repeat(70))
 console.log("Key: ops/s = operations per second, /op = time per operation")
 console.log("beorn uses ?. for zero-overhead: disabled calls skip argument evaluation")
+console.log("Enabled benchmarks: all loggers write to noop sinks (fair comparison)")
 console.log("")
