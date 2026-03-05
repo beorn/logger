@@ -23,7 +23,12 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "browser": "./src/index.browser.ts",
       "default": "./src/index.ts"
+    },
+    "./file-writer": {
+      "types": "./dist/file-writer.d.ts",
+      "default": "./src/file-writer.ts"
     },
     "./worker": {
       "types": "./dist/worker.d.ts",
