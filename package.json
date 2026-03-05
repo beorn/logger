@@ -1,6 +1,6 @@
 {
   "name": "decant",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Structured logging with spans. ~3KB, zero-overhead disabled logging via optional chaining.",
   "keywords": [
     "logger",
