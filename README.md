@@ -4,9 +4,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Structured logging with built-in spans. **~3KB**, one dependency ([picocolors](https://github.com/alexeyraspopov/picocolors)).
+Clarity without the clutter. Ergonomic unified logs, spans, and debugs for modern TypeScript. **~3KB**, one dependency ([picocolors](https://github.com/alexeyraspopov/picocolors)).
 
-The core idea: every logger is a potential span. Call `.span()` and it becomes one -- with automatic timing, parent-child tracking, and trace IDs. No separate tracing library needed.
+The core idea: every logger is a potential span. Call `.span()` and it becomes one -- with automatic timing, parent-child tracking, and trace IDs. No separate tracing library needed. Read **[The Journey](docs/guide.md)** for the full story.
 
 ## Install
 
@@ -248,6 +248,7 @@ TRACE=myapp:db bun run app               # Spans for specific namespace only
 
 ## Documentation
 
+- **[The Journey](docs/guide.md)** -- Progressive guide from first log to full observability
 - [API Reference](docs/api-reference.md) -- Complete API documentation
 - [Comparison](docs/comparison.md) -- vs Pino, Winston, Bunyan, debug
 - [Migration from debug](docs/migration-from-debug.md) -- Step-by-step migration guide

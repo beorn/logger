@@ -3,12 +3,12 @@ layout: home
 
 hero:
   name: "@beorn/logger"
-  text: "Structured logging with spans"
-  tagline: "~3KB, one dependency, zero-overhead disabled logging via optional chaining. Built-in spans with automatic timing."
+  text: "Clarity without the clutter"
+  tagline: "Ergonomic unified logs, spans, and debugs for modern TypeScript. ~3KB, one dependency, zero-overhead disabled logging via optional chaining."
   actions:
     - theme: brand
-      text: Get Started
-      link: /guide/getting-started
+      text: The Journey
+      link: /guide/journey
     - theme: alt
       text: View on GitHub
       link: https://github.com/beorn/logger

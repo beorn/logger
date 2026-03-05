@@ -2,14 +2,14 @@ import { defineConfig } from "vitepress"
 
 export default defineConfig({
   title: "@beorn/logger",
-  description: "Structured logging with spans. ~3KB, zero-overhead disabled logging via optional chaining.",
+  description: "Clarity without the clutter. Ergonomic unified logs, spans, and debugs for modern TypeScript.",
   base: "/logger/",
 
   themeConfig: {
     siteTitle: "@beorn/logger",
 
     nav: [
-      { text: "Guide", link: "/guide/getting-started" },
+      { text: "Guide", link: "/guide/journey" },
       { text: "API", link: "/api/" },
       { text: "GitHub", link: "https://github.com/beorn/logger" },
     ],
@@ -19,6 +19,7 @@ export default defineConfig({
         {
           text: "Introduction",
           items: [
+            { text: "The Journey", link: "/guide/journey" },
             { text: "Getting Started", link: "/guide/getting-started" },
             { text: "Why @beorn/logger?", link: "/guide/why" },
           ],
