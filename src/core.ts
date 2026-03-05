@@ -311,23 +311,57 @@ function useJsonFormat(): boolean {
   return currentLogFormat === "json" || getEnv("NODE_ENV") === "production" || getEnv("TRACE_FORMAT") === "json"
 }
 
-// ============ ID Generation ============
+// ============ ID Generation (delegated to tracing.ts) ============
 
-let spanIdCounter = 0
-let traceIdCounter = 0
-
-function generateSpanId(): string {
-  return `sp_${(++spanIdCounter).toString(36)}`
-}
-
-function generateTraceId(): string {
-  return `tr_${(++traceIdCounter).toString(36)}`
-}
+import { generateSpanId, generateTraceId, resetIdCounters, shouldSample } from "./tracing.js"
 
 // Reset for testing
 export function resetIds(): void {
-  spanIdCounter = 0
-  traceIdCounter = 0
+  resetIdCounters()
+}
+
+// ============ Context Propagation Hooks ============
+
+// These are set by context.ts when enableContextPropagation() is called.
+// Kept as nullable callbacks to avoid importing AsyncLocalStorage in browser.
+
+/** Hook to get current span context tags (trace_id, span_id) for auto-tagging logs */
+let _getContextTags: (() => Record<string, string>) | null = null
+
+/** Hook to get parent span info from async context */
+let _getContextParent: (() => { spanId: string; traceId: string } | null) | null = null
+
+/** Hook to enter a span context (sets AsyncLocalStorage for the current async scope) */
+let _enterContext: ((spanId: string, traceId: string, parentId: string | null) => void) | null = null
+
+/** Hook to exit a span context (restores parent or clears) */
+let _exitContext: ((parentId: string | null, parentTraceId: string | null) => void) | null = null
+
+/**
+ * Register context propagation hooks (called by context.ts).
+ * @internal
+ */
+export function _setContextHooks(hooks: {
+  getContextTags: () => Record<string, string>
+  getContextParent: () => { spanId: string; traceId: string } | null
+  enterContext: (spanId: string, traceId: string, parentId: string | null) => void
+  exitContext: (parentId: string | null, parentTraceId: string | null) => void
+}): void {
+  _getContextTags = hooks.getContextTags
+  _getContextParent = hooks.getContextParent
+  _enterContext = hooks.enterContext
+  _exitContext = hooks.exitContext
+}
+
+/**
+ * Clear context propagation hooks (called by disableContextPropagation).
+ * @internal
+ */
+export function _clearContextHooks(): void {
+  _getContextTags = null
+  _getContextParent = null
+  _enterContext = null
+  _exitContext = null
 }
 
 // ============ Formatting ============
@@ -433,9 +467,13 @@ function writeLog(
   // Resolve lazy message only after level/namespace checks pass
   const resolved = resolveMessage(message)
 
+  // Auto-tag with trace/span context when context propagation is enabled
+  const contextTags = _getContextTags?.()
+  const mergedData = contextTags && Object.keys(contextTags).length > 0 ? { ...contextTags, ...data } : data
+
   const formatted = useJsonFormat()
-    ? formatJSON(namespace, level, resolved, data)
-    : formatConsole(namespace, level, resolved, data)
+    ? formatJSON(namespace, level, resolved, mergedData)
+    : formatConsole(namespace, level, resolved, mergedData)
 
   for (const w of writers) w(formatted, level)
 
@@ -495,6 +533,7 @@ function createLoggerImpl(
   spanMeta: MutableSpanData | null,
   parentSpanId: string | null,
   traceId: string | null,
+  traceSampled: boolean = true,
 ): Logger {
   const log = (level: OutputLogLevel, msgOrError: LazyMessage | Error, data?: Record<string, unknown>): void => {
     if (msgOrError instanceof Error) {
@@ -560,26 +599,54 @@ function createLoggerImpl(
     logger(namespace?: string, childProps?: Record<string, unknown>): Logger {
       const childName = namespace ? `${name}:${namespace}` : name
       const mergedProps = { ...props, ...childProps }
-      return createLoggerImpl(childName, mergedProps, null, parentSpanId, traceId)
+      return createLoggerImpl(childName, mergedProps, null, parentSpanId, traceId, traceSampled)
     },
 
     span(namespace?: string, childProps?: Record<string, unknown>): SpanLogger {
       const childName = namespace ? `${name}:${namespace}` : name
       const mergedProps = { ...props, ...childProps }
       const newSpanId = generateSpanId()
-      const newTraceId = traceId || generateTraceId()
+
+      // Resolve parent from context propagation if not explicitly set
+      let resolvedParentId = parentSpanId
+      let resolvedTraceId = traceId
+
+      if (!resolvedParentId && _getContextParent) {
+        const ctxParent = _getContextParent()
+        if (ctxParent) {
+          resolvedParentId = ctxParent.spanId
+          resolvedTraceId = resolvedTraceId || ctxParent.traceId
+        }
+      }
+
+      // Determine trace ID — generate new one if starting a new trace
+      const isNewTrace = !resolvedTraceId
+      const finalTraceId = resolvedTraceId || generateTraceId()
+
+      // Head-based sampling: inherit from parent, or decide at trace creation
+      const sampled = isNewTrace ? shouldSample() : traceSampled
 
       const newSpanData: MutableSpanData = {
         id: newSpanId,
-        traceId: newTraceId,
-        parentId: parentSpanId,
+        traceId: finalTraceId,
+        parentId: resolvedParentId,
         startTime: Date.now(),
         endTime: null,
         duration: null,
         attrs: {},
       }
 
-      const spanLogger = createLoggerImpl(childName, mergedProps, newSpanData, newSpanId, newTraceId) as SpanLogger
+      const spanLogger = createLoggerImpl(
+        childName,
+        mergedProps,
+        newSpanData,
+        newSpanId,
+        finalTraceId,
+        sampled,
+      ) as SpanLogger
+
+      // Enter span context for async propagation (if enabled)
+      _enterContext?.(newSpanId, finalTraceId, resolvedParentId)
 
       // Add disposal
       ;(spanLogger as unknown as { [Symbol.dispose]: () => void })[Symbol.dispose] = () => {
@@ -588,14 +655,19 @@ function createLoggerImpl(
         newSpanData.endTime = Date.now()
         newSpanData.duration = newSpanData.endTime - newSpanData.startTime
 
-        // Emit span event
-        writeSpan(childName, newSpanData.duration, {
-          span_id: newSpanData.id,
-          trace_id: newSpanData.traceId,
-          parent_id: newSpanData.parentId,
-          ...mergedProps,
-          ...newSpanData.attrs,
-        })
+        // Exit span context (restore parent or clear)
+        _exitContext?.(resolvedParentId, resolvedParentId ? finalTraceId : null)
+
+        // Only emit span if sampled
+        if (sampled) {
+          writeSpan(childName, newSpanData.duration, {
+            span_id: newSpanData.id,
+            trace_id: newSpanData.traceId,
+            parent_id: newSpanData.parentId,
+            ...mergedProps,
+            ...newSpanData.attrs,
+          })
+        }
       }
 
       return spanLogger
@@ -607,7 +679,7 @@ function createLoggerImpl(
         return this.logger(context)
       }
       // Context object overload: merge context fields into props
-      return createLoggerImpl(name, { ...props, ...context }, null, parentSpanId, traceId)
+      return createLoggerImpl(name, { ...props, ...context }, null, parentSpanId, traceId, traceSampled)
     },
 
     end(): void {

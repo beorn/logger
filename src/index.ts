@@ -7,3 +7,4 @@
 
 export * from "./core.js"
 export { createFileWriter, type FileWriter, type FileWriterOptions } from "./file-writer.js"
+export { setIdFormat, getIdFormat, type IdFormat, traceparent, setSampleRate, getSampleRate } from "./tracing.js"

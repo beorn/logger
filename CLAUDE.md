@@ -141,6 +141,58 @@ setDebugFilter(null) // Clear filter, show all namespaces
 getDebugFilter() // Get current filter: ["myapp", "-myapp:sql"] or null
 ```
 
+## Distributed Tracing (opt-in)
+
+### ID Format
+
+```typescript
+import { setIdFormat, getIdFormat } from "@beorn/logger"
+
+setIdFormat("simple") // sp_1, tr_1 (default)
+setIdFormat("w3c") // 16-char hex span, 32-char hex trace (W3C Trace Context)
+```
+
+### traceparent Header
+
+```typescript
+import { traceparent } from "@beorn/logger"
+
+const span = log.span("http-request")
+const header = traceparent(span.spanData)
+// → "00-a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6-1a2b3c4d5e6f7a8b-01"
+fetch(url, { headers: { traceparent: header } })
+```
+
+### Sampling
+
+```typescript
+import { setSampleRate, getSampleRate } from "@beorn/logger"
+
+setSampleRate(0.1) // Sample 10% of traces (head-based)
+setSampleRate(1.0) // Sample everything (default)
+```
+
+### Context Propagation (Node.js/Bun only)
+
+```typescript
+import { enableContextPropagation, getCurrentSpan } from "@beorn/logger/context"
+
+enableContextPropagation()
+
+const log = createLogger("myapp")
+{
+  using span = log.span("request")
+  // Logs auto-tagged with trace_id/span_id
+  log.info("handling") // includes trace_id, span_id in output
+
+  // Child spans from ANY logger auto-parent via AsyncLocalStorage
+  const other = createLogger("db")
+  const dbSpan = other.span("query") // parentId = span.id
+
+  getCurrentSpan() // { spanId, traceId, parentId }
+}
+```
+
 ## Output Format
 
 ### Console (development)

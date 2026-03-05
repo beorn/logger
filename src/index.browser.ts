@@ -50,6 +50,9 @@ export {
   createLogger,
 } from "./core.js"
 
+// Tracing utilities (runtime-agnostic, work in browser)
+export { setIdFormat, getIdFormat, type IdFormat, traceparent, setSampleRate, getSampleRate } from "./tracing.js"
+
 // File writer types (exported for type compatibility, but the function throws)
 export type { FileWriterOptions, FileWriter } from "./file-writer.js"
 
