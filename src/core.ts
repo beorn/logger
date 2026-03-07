@@ -25,7 +25,7 @@
  * }
  */
 
-import pc from "picocolors"
+import { colors as pc } from "./colors.js"
 
 // ============ Runtime Detection ============
 
