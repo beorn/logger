@@ -12,12 +12,12 @@ Most projects wire together three separate tools that don't talk to each other: 
 
 In development, you get colorized console output with timestamps, level colors, and clickable source lines — loggily uses native `console` methods so stack traces stay intact in DevTools. In production, the same code emits structured JSON. No config change needed.
 
-Read **[The Journey](docs/guide.md)** for the full story.
+Read **[The Journey](docs/guide/journey.md)** for the full story.
 
 ## Install
 
 ```bash
-bun add loggily    # or: npm install loggily
+npm install loggily
 ```
 
 ## Quick Start
@@ -72,10 +72,10 @@ For trivial arguments the difference is negligible. But for real-world logging �
 
 ## Documentation
 
-- **[The Journey](docs/guide.md)** — progressive guide from first log to full observability
+- **[The Journey](docs/guide/journey.md)** — progressive guide from first log to full observability
 - **[Full docs site](https://beorn.codes/loggily/)** — guides, API reference, migration guides
-- [Comparison](docs/comparison.md) — vs Pino, Winston, Bunyan, debug
-- [Migration from debug](docs/migration-from-debug.md) — step-by-step migration guide
+- [Comparison](docs/guide/comparison.md) — vs Pino, Winston, Bunyan, debug
+- [Migration from debug](docs/guide/migration-from-debug.md) — step-by-step migration guide
 
 ## Environment Variables
 
@@ -101,7 +101,7 @@ For trivial arguments the difference is negligible. But for real-world logging �
 | `setLogLevel()` / `setLogFormat()` / `enableSpans()`                   | Runtime configuration                                         |
 | `createWorkerLogger()` / `createWorkerLogHandler()`                    | Worker thread support (`loggily/worker`)                      |
 
-See the [full API reference](docs/api-reference.md) for all functions and options.
+See the [full API reference](https://beorn.codes/loggily/api/) for all functions and options.
 
 ## License
 
