@@ -1,4 +1,4 @@
-# loggily
+# Loggily
 
 Structured logging with spans. Logger-first architecture: Span = Logger + Duration.
 

@@ -63,7 +63,7 @@ const log = pino({ level: "debug" })
 const child = log.child({ requestId: "123" })
 child.info({ user: "alice" }, "logged in")
 
-// loggily
+// Loggily
 import { createLogger } from "loggily"
 const log = createLogger("myapp")
 const child = log.logger("request", { requestId: "123" })
@@ -120,7 +120,7 @@ const log = winston.createLogger({
 })
 log.info("starting", { port: 3000 })
 
-// loggily
+// Loggily
 import { createLogger } from "loggily"
 const log = createLogger("myapp")
 log.info("starting", { port: 3000 })
@@ -171,7 +171,7 @@ const log = bunyan.createLogger({ name: "myapp" })
 const child = log.child({ requestId: "123" })
 child.info({ user: "alice" }, "logged in")
 
-// loggily
+// Loggily
 import { createLogger } from "loggily"
 const log = createLogger("myapp")
 const child = log.logger("request", { requestId: "123" })
@@ -223,7 +223,7 @@ import createDebug from "debug"
 const debug = createDebug("myapp")
 debug("user %s logged in", username)
 
-// loggily
+// Loggily
 import { createLogger } from "loggily"
 const log = createLogger("myapp")
 log.info("user logged in", { username })
@@ -243,7 +243,7 @@ Optional chaining skips argument evaluation entirely:
 // Other loggers - args always evaluated
 pino.debug(`expensive: ${computeState()}`) // computeState() runs even if disabled
 
-// loggily - args skipped when disabled
+// Loggily - args skipped when disabled
 log.debug?.(`expensive: ${computeState()}`) // computeState() NOT called if disabled
 ```
 

@@ -56,7 +56,7 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 })
 
-// loggily
+// Loggily
 const log = createLogger("myapp")
 // Level, format, and output configured via env vars or API:
 // LOG_LEVEL=info, LOG_FORMAT=json, NODE_ENV=production
@@ -70,7 +70,7 @@ logger.info("starting", { port: 3000 })
 logger.info({ message: "starting", port: 3000 })
 logger.error("failed", { error: err.message, stack: err.stack })
 
-// loggily — message + optional data
+// Loggily — message + optional data
 log.info?.("starting", { port: 3000 })
 log.error?.(err) // Error: auto-extracts message, stack, code
 log.error?.(err, { context: "startup" }) // With extra context
@@ -95,7 +95,7 @@ log.error?.(err, { context: "startup" }) // With extra context
 const childLogger = logger.child({ requestId: "abc" })
 childLogger.info("processing")
 
-// loggily — two patterns
+// Loggily — two patterns
 const child = log.child({ requestId: "abc" }) // Context fields
 const dbLog = log.logger("db") // Namespace: myapp:db
 ```
@@ -108,7 +108,7 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console(), new winston.transports.File({ filename: "app.log" })],
 })
 
-// loggily writers
+// Loggily writers
 import { addWriter, createFileWriter } from "loggily"
 
 // Console output is built-in (default)
@@ -134,7 +134,7 @@ const logger = winston.createLogger({
   ),
 })
 
-// loggily — built-in formats
+// Loggily — built-in formats
 // Development: colorized console with timestamp (default)
 // Production: JSON (NODE_ENV=production or LOG_FORMAT=json)
 // No configuration needed
@@ -148,7 +148,7 @@ logger.profile("operation")
 await doWork()
 logger.profile("operation") // logs duration
 
-// loggily (built-in spans)
+// Loggily (built-in spans)
 {
   using span = log.span("operation")
   await doWork()

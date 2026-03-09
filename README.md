@@ -1,4 +1,4 @@
-# loggily
+# Loggily
 
 **Clarity without the clutter.**
 
@@ -53,7 +53,7 @@ log.debug(`state: ${JSON.stringify(computeExpensiveState())}`)
 Loggily uses optional chaining to skip the entire call — including argument evaluation:
 
 ```typescript
-// loggily — args are NOT evaluated when disabled
+// Loggily — args are NOT evaluated when disabled
 log.debug?.(`state: ${JSON.stringify(computeExpensiveState())}`)
 ```
 

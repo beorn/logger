@@ -51,7 +51,7 @@ debug("message %d items", count)
 debug("object: %o", obj)
 debug("json: %j", data)
 
-// loggily
+// Loggily
 log.debug("message")
 log.debug(`message ${value}`)
 log.debug("message", { items: count })
@@ -67,7 +67,7 @@ const debug = createDebug("myapp")
 const debugDb = createDebug("myapp:db")
 const debugCache = createDebug("myapp:cache")
 
-// loggily - hierarchy via .logger()
+// Loggily - hierarchy via .logger()
 const log = createLogger("myapp")
 const dbLog = log.logger("db") // myapp:db
 const cacheLog = log.logger("cache") // myapp:cache
@@ -93,7 +93,7 @@ if (debug.enabled) {
   debug("expensive: %o", computeExpensive())
 }
 
-// loggily - optional chaining (cleaner, faster)
+// Loggily - optional chaining (cleaner, faster)
 log.debug?.(`expensive: ${computeExpensive()}`)
 ```
 
@@ -106,7 +106,7 @@ log.debug?.(`expensive: ${computeExpensive()}`)
 debug("user %s logged in from %s", username, ip)
 debug("processed %d items in %dms", count, duration)
 
-// loggily (template literals or structured)
+// Loggily (template literals or structured)
 log.info(`user ${username} logged in from ${ip}`)
 // or structured (preferred)
 log.info("user logged in", { username, ip })
@@ -120,7 +120,7 @@ debug("config: %O", config) // multi-line
 debug("data: %o", data) // single-line
 debug("json: %j", obj) // JSON
 
-// loggily (always structured JSON)
+// Loggily (always structured JSON)
 log.debug("config", { config })
 log.debug("data", { data })
 log.debug("obj", { obj })
@@ -133,7 +133,7 @@ log.debug("obj", { obj })
 debug("error: %s", err.message)
 debug("stack: %s", err.stack)
 
-// loggily (Error objects handled automatically)
+// Loggily (Error objects handled automatically)
 log.error(err) // Extracts message, stack, code
 log.error(err, { context: "additional info" })
 ```
@@ -146,7 +146,7 @@ const start = Date.now()
 await doWork()
 debug("operation took %dms", Date.now() - start)
 
-// loggily (built-in spans)
+// Loggily (built-in spans)
 {
   using span = log.span("operation")
   await doWork()
@@ -168,7 +168,7 @@ debug("operation took %dms", Date.now() - start)
 const debug = createDebug("myapp")
 const debugReq = createDebug("myapp:request")
 
-// loggily - props inherited
+// Loggily - props inherited
 const log = createLogger("myapp", { version: "1.0" })
 const reqLog = log.logger("request", { requestId: "abc" })
 // reqLog has both version and requestId
@@ -300,7 +300,7 @@ debug has `.enabled` property. Loggily uses level comparison:
 // debug
 if (debug.enabled) { ... }
 
-// loggily
+// Loggily
 import { getLogLevel } from 'loggily'
 const LEVELS = { trace: 0, debug: 1, info: 2, warn: 3, error: 4, silent: 5 }
 if (LEVELS.debug >= LEVELS[getLogLevel()]) { ... }

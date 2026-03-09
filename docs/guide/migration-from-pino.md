@@ -52,7 +52,7 @@ const logger = pino()
 const logger = pino({ level: "debug" })
 const logger = pino({ name: "myapp" })
 
-// loggily
+// Loggily
 const log = createLogger("myapp")
 setLogLevel("debug") // Global level
 ```
@@ -66,7 +66,7 @@ logger.info("simple message")
 logger.error({ err }, "request failed")
 logger.error(err, "request failed") // Error serialization
 
-// loggily — message first, then data
+// Loggily — message first, then data
 log.info?.("user logged in", { userId: 42 })
 log.info?.("simple message")
 log.error?.(err, { context: "request" }) // Error object handled
@@ -80,7 +80,7 @@ log.error?.(err) // Extracts message, stack, code
 const child = logger.child({ requestId: "abc" })
 child.info("handling request")
 
-// loggily — two patterns
+// Loggily — two patterns
 // 1. Context fields (like Pino's child)
 const child = log.child({ requestId: "abc" })
 child.info?.("handling request") // includes requestId
@@ -112,7 +112,7 @@ const logger = pino({
   },
 })
 
-// loggily writers
+// Loggily writers
 import { addWriter, createFileWriter } from "loggily"
 
 const writer = createFileWriter("/tmp/app.log")
@@ -130,7 +130,7 @@ const logger = pino({
   },
 })
 
-// loggily — handle in data parameter
+// Loggily — handle in data parameter
 log.info?.("request", {
   method: req.method,
   url: req.url,
@@ -147,7 +147,7 @@ const start = Date.now()
 await operation()
 logger.info({ duration: Date.now() - start }, "operation complete")
 
-// loggily (built-in spans)
+// Loggily (built-in spans)
 {
   using span = log.span("operation")
   await operation()
