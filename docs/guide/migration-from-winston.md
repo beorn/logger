@@ -1,10 +1,10 @@
 # Migration from Winston
 
-Step-by-step guide for migrating from Winston to loggily.
+Step-by-step guide for migrating from Winston to Loggily.
 
 ## Why Migrate?
 
-| Feature                   | Winston                 | loggily                       |
+| Feature                   | Winston                 | Loggily                       |
 | ------------------------- | ----------------------- | ----------------------------- |
 | Log levels                | Customizable            | 5 fixed levels + silent       |
 | Structured data           | Yes (metadata)          | Yes (data parameter)          |
@@ -33,7 +33,7 @@ logger.info("server started", { port: 3000 })
 logger.error("request failed", { error: err.message })
 ```
 
-### After (loggily)
+### After (Loggily)
 
 ```typescript
 import { createLogger } from "loggily"
@@ -78,7 +78,7 @@ log.error?.(err, { context: "startup" }) // With extra context
 
 ### Levels
 
-| Winston Level | loggily Level           |
+| Winston Level | Loggily Level           |
 | ------------- | ----------------------- |
 | error         | error                   |
 | warn          | warn                    |
@@ -158,7 +158,7 @@ logger.profile("operation") // logs duration
 
 ## Environment Variables
 
-| Winston                  | loggily               | Effect             |
+| Winston                  | Loggily               | Effect             |
 | ------------------------ | --------------------- | ------------------ |
 | N/A (configured in code) | `LOG_LEVEL=debug`     | Set minimum level  |
 | N/A                      | `DEBUG=myapp`         | Namespace filter   |

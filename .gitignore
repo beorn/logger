@@ -3,5 +3,5 @@ dist/
 coverage/
 *.log
 .DS_Store
-docs/site/.vitepress/dist/
-docs/site/.vitepress/cache/
+docs/.vitepress/dist/
+docs/.vitepress/cache/

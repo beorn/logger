@@ -1,10 +1,10 @@
 # Migration from Pino
 
-Step-by-step guide for migrating from Pino to loggily.
+Step-by-step guide for migrating from Pino to Loggily.
 
 ## Why Migrate?
 
-| Feature                   | Pino                   | loggily                       |
+| Feature                   | Pino                   | Loggily                       |
 | ------------------------- | ---------------------- | ----------------------------- |
 | Log levels                | Yes (7 levels)         | Yes (5 levels + silent)       |
 | Structured data           | Yes (JSON)             | Yes (JSON + pretty console)   |
@@ -30,7 +30,7 @@ logger.info({ port: 3000 }, "server started")
 child.debug({ query: sql, params }, "executing query")
 ```
 
-### After (loggily)
+### After (Loggily)
 
 ```typescript
 import { createLogger } from "loggily"
@@ -91,7 +91,7 @@ const dbLog = log.logger("db") // name: "myapp:db"
 
 ### Levels
 
-| Pino Level | Value | loggily Level             |
+| Pino Level | Value | Loggily Level             |
 | ---------- | ----: | ------------------------- |
 | trace      |    10 | trace                     |
 | debug      |    20 | debug                     |
@@ -158,7 +158,7 @@ logger.info({ duration: Date.now() - start }, "operation complete")
 
 ## Environment Variables
 
-| Pino                  | loggily               | Effect                                |
+| Pino                  | Loggily               | Effect                                |
 | --------------------- | --------------------- | ------------------------------------- |
 | `LOG_LEVEL=debug`     | `LOG_LEVEL=debug`     | Set minimum level                     |
 | N/A                   | `DEBUG=myapp`         | Namespace filter (auto-enables debug) |
@@ -170,7 +170,7 @@ logger.info({ duration: Date.now() - start }, "operation complete")
 
 1. **Update dependencies**: `bun remove pino pino-pretty && bun add loggily`
 2. **Update imports**: `import pino from "pino"` → `import { createLogger } from "loggily"`
-3. **Swap argument order**: Pino uses `(data, message)`, loggily uses `(message, data)`
+3. **Swap argument order**: Pino uses `(data, message)`, Loggily uses `(message, data)`
 4. **Replace `logger.child()`** with `.child()` (context) or `.logger()` (namespace)
 5. **Convert transports** to writers via `addWriter()`
 6. **Add `?.`** to all log calls for zero-overhead disabled logging

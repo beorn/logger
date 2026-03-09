@@ -43,7 +43,7 @@ log.warn?.("rate limited", { remaining: 0, resetIn: 60 })
 log.error?.(new Error("connection lost"))
 ```
 
-Notice the `?.` -- this is intentional. When a log level is disabled, the method returns `undefined`, and optional chaining skips the entire call including argument evaluation. This is the core performance feature of loggily.
+Notice the `?.` -- this is intentional. When a log level is disabled, the method returns `undefined`, and optional chaining skips the entire call including argument evaluation. This is the core performance feature of Loggily.
 
 ## Log Levels
 

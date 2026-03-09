@@ -1,4 +1,4 @@
-# Contributing to loggily
+# Contributing to Loggily
 
 ## Development Setup
 

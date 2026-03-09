@@ -1,7 +1,5 @@
 # API Reference
 
-See the [full API reference](https://github.com/beorn/loggily/blob/main/docs/api-reference.md) for complete documentation.
-
 ## Exports from `loggily`
 
 ### Core

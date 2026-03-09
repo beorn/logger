@@ -1,4 +1,4 @@
-# Why loggily?
+# Why Loggily?
 
 ## The Problem
 
@@ -13,7 +13,7 @@ log.debug(`state: ${JSON.stringify(computeExpensiveState())}`)
 
 ## The Solution
 
-loggily uses optional chaining to skip argument evaluation entirely:
+Loggily uses optional chaining to skip argument evaluation entirely:
 
 ```typescript
 log.debug?.(`state: ${JSON.stringify(computeExpensiveState())}`)
@@ -36,7 +36,7 @@ For cheap arguments the overhead is ~0.2ns -- negligible. For expensive argument
 
 ## Compared to Others
 
-| Feature            | loggily    | Pino  | Winston | debug |
+| Feature            | Loggily    | Pino  | Winston | debug |
 | ------------------ | ---------- | ----- | ------- | ----- |
 | Zero-cost disabled | `?.` (22x) | noop  | noop    | check |
 | Built-in spans     | Yes        | No    | No      | No    |
@@ -44,7 +44,7 @@ For cheap arguments the overhead is ~0.2ns -- negligible. For expensive argument
 | TypeScript native  | Yes        | Types | Types   | Types |
 | Worker threads     | Yes        | No    | No      | No    |
 
-See [Comparison](https://github.com/beorn/loggily/blob/main/docs/comparison.md) for detailed analysis of each.
+See [Comparison](/guide/comparison) for detailed analysis of each.
 
 ## Design Principles
 

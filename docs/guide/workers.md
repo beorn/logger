@@ -1,6 +1,6 @@
 # Worker Thread Support
 
-loggily provides typed message protocols for forwarding logs from worker threads to the main thread.
+Loggily provides typed message protocols for forwarding logs from worker threads to the main thread.
 
 ## Full Logger Forwarding
 

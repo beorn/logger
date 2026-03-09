@@ -535,10 +535,7 @@ interface SpanDataFields {
  * Create a proxy that exposes span metadata as readonly and custom attributes as writable.
  * Shared between core logger spans and worker logger spans.
  */
-export function createSpanDataProxy(
-  getFields: () => SpanDataFields,
-  attrs: Record<string, unknown>,
-): SpanData {
+export function createSpanDataProxy(getFields: () => SpanDataFields, attrs: Record<string, unknown>): SpanData {
   const READONLY_KEYS = new Set(["id", "traceId", "parentId", "startTime", "endTime", "duration"])
   return new Proxy(attrs, {
     get(_target, prop) {
@@ -605,10 +602,7 @@ function createLoggerImpl(
           parentId: spanMeta.parentId,
           startTime: spanMeta.startTime,
           endTime: spanMeta.endTime,
-          duration:
-            spanMeta.endTime !== null
-              ? spanMeta.endTime - spanMeta.startTime
-              : Date.now() - spanMeta.startTime,
+          duration: spanMeta.endTime !== null ? spanMeta.endTime - spanMeta.startTime : Date.now() - spanMeta.startTime,
         }),
         spanMeta.attrs,
       )

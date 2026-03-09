@@ -4,7 +4,7 @@
 
 Your first app uses `console.log`. That's enough for a script, a prototype, a small server. Then your app grows. You need structured logs for production, the `debug` package for conditional verbose output, a tracing library for timings, maybe OpenTelemetry for distributed traces — and suddenly you're juggling three tools with three APIs, three configuration schemes, and three output formats.
 
-loggily is one library where structured logging, debug-style conditional output, timed spans, and metrics all share the same namespace tree, the same output pipeline, and the same zero-overhead pattern. You adopt each capability when you need it. Nothing is wasted, nothing conflicts, nothing clutters your code.
+Loggily is one library where structured logging, debug-style conditional output, timed spans, and metrics all share the same namespace tree, the same output pipeline, and the same zero-overhead pattern. You adopt each capability when you need it. Nothing is wasted, nothing conflicts, nothing clutters your code.
 
 ## Level 1: Just Log
 
@@ -189,7 +189,7 @@ Every log from `reqLog` and its descendants carries `requestId` and `userId` wit
 
 ## What You Have
 
-Normally, you'd pull in one library for logs, another for debug prints, a tracing SDK for spans — and struggle to tie them together. With loggily, these aren't separate concerns. They're modes of the same tool.
+Normally, you'd pull in one library for logs, another for debug prints, a tracing SDK for spans — and struggle to tie them together. With Loggily, these aren't separate concerns. They're modes of the same tool.
 
 At this point you've replaced that patchwork with a single library:
 

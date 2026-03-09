@@ -52,9 +52,9 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "bunx --bun vitest run",
-    "docs:dev": "vitepress dev docs/site",
-    "docs:build": "vitepress build docs/site",
-    "docs:preview": "vitepress preview docs/site"
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

@@ -4,7 +4,7 @@ Step-by-step guide for migrating from the `debug` package to `loggily`.
 
 ## Why Migrate?
 
-| Feature            | debug               | loggily                                     |
+| Feature            | debug               | Loggily                                     |
 | ------------------ | ------------------- | ------------------------------------------- |
 | Log levels         | No (namespace only) | Yes (trace, debug, info, warn, error)       |
 | Structured data    | No (printf-style)   | Yes (JSON objects)                          |
@@ -27,7 +27,7 @@ debug("starting server on port %d", 3000)
 debugDb("query: %s, params: %o", sql, params)
 ```
 
-### After (loggily)
+### After (Loggily)
 
 ```typescript
 import { createLogger } from "loggily"
@@ -75,7 +75,7 @@ const cacheLog = log.logger("cache") // myapp:cache
 
 ### Environment Variables
 
-| debug            | loggily           | Effect                                 |
+| debug            | Loggily           | Effect                                 |
 | ---------------- | ----------------- | -------------------------------------- |
 | `DEBUG=*`        | `DEBUG=*`         | Enable all debug output                |
 | `DEBUG=myapp*`   | `DEBUG=myapp`     | Enable debug for namespace             |
@@ -282,19 +282,19 @@ After migration, verify:
 
 ### Namespace Filtering
 
-loggily supports `DEBUG=myapp` for namespace filtering (like the `debug` package). It also supports negative patterns: `DEBUG=myapp,-myapp:noisy`. For span-specific namespace filtering, use `TRACE=myapp:db`.
+Loggily supports `DEBUG=myapp` for namespace filtering (like the `debug` package). It also supports negative patterns: `DEBUG=myapp,-myapp:noisy`. For span-specific namespace filtering, use `TRACE=myapp:db`.
 
 ### Printf Format Strings
 
-debug uses printf-style `%s`, `%d`, `%o`. loggily uses template literals or structured data. Search for `%s`, `%d`, `%o`, `%j`, `%O` to find calls that need conversion.
+debug uses printf-style `%s`, `%d`, `%o`. Loggily uses template literals or structured data. Search for `%s`, `%d`, `%o`, `%j`, `%O` to find calls that need conversion.
 
 ### No Automatic Coloring by Namespace
 
-debug auto-assigns colors to namespaces. loggily uses level-based colors. If you need namespace distinction, include it in the log output or use the `name` property.
+debug auto-assigns colors to namespaces. Loggily uses level-based colors. If you need namespace distinction, include it in the log output or use the `name` property.
 
 ### enabled Property
 
-debug has `.enabled` property. loggily uses level comparison:
+debug has `.enabled` property. Loggily uses level comparison:
 
 ```typescript
 // debug

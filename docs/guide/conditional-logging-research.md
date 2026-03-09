@@ -1,6 +1,6 @@
 # Conditional Logging Research
 
-Background research for the optional chaining pattern in loggily.
+Background research for the optional chaining pattern in Loggily.
 
 ## The Problem
 

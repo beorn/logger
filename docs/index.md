@@ -25,7 +25,7 @@ features:
   - title: ~3KB, Zero Dependencies
     details: "No external dependencies. Native TypeScript, ESM-only. Runs on Node, Bun, and Deno."
   - title: One Unified Pipeline
-    details: "Most projects wire together debug, pino, and OpenTelemetry — three configs, three formats, three APIs. loggily integrates all three: one namespace tree, one output pipeline, one import instead of three."
+    details: "Most projects wire together debug, pino, and OpenTelemetry — three configs, three formats, three APIs. Loggily integrates all three: one namespace tree, one output pipeline, one import instead of three."
 ---
 
 ## Quick Start

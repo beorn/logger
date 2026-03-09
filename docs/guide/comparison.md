@@ -1,10 +1,10 @@
 # Comparison with Other Loggers
 
-How loggily compares to popular Node.js logging libraries.
+How Loggily compares to popular Node.js logging libraries.
 
 ## Feature Comparison Table
 
-| Feature                | loggily     | Pino    | Winston   | Bunyan    | debug     |
+| Feature                | Loggily     | Pino    | Winston   | Bunyan    | debug     |
 | ---------------------- | ----------- | ------- | --------- | --------- | --------- |
 | **Log Levels**         | Yes (5)     | Yes (6) | Yes (7)   | Yes (6)   | No        |
 | **Structured Logging** | Yes         | Yes     | Yes       | Yes       | No        |
@@ -31,7 +31,7 @@ How loggily compares to popular Node.js logging libraries.
 
 ### Differences
 
-| Aspect             | Pino                           | loggily                            |
+| Aspect             | Pino                           | Loggily                            |
 | ------------------ | ------------------------------ | ---------------------------------- |
 | Zero-cost disabled | Noop function (args evaluated) | Optional chaining (args skipped)   |
 | Spans              | External (pino-opentelemetry)  | Built-in                           |
@@ -47,7 +47,7 @@ How loggily compares to popular Node.js logging libraries.
 - You need custom serializers for complex objects
 - You're building a large production system with multiple log destinations
 
-**Choose loggily if:**
+**Choose Loggily if:**
 
 - You want zero-cost disabled logging via optional chaining
 - You need built-in span timing
@@ -84,7 +84,7 @@ child.info("logged in", { user: "alice" })
 
 ### Differences
 
-| Aspect        | Winston                | loggily             |
+| Aspect        | Winston                | Loggily             |
 | ------------- | ---------------------- | ------------------- |
 | Philosophy    | Flexible, configurable | Simple, opinionated |
 | Transports    | 10+ built-in           | stdout only         |
@@ -101,7 +101,7 @@ child.info("logged in", { user: "alice" })
 - You need custom formatters and filters
 - You have complex logging requirements
 
-**Choose loggily if:**
+**Choose Loggily if:**
 
 - You want minimal configuration
 - Performance is critical
@@ -140,7 +140,7 @@ log.info("starting", { port: 3000 })
 
 ### Differences
 
-| Aspect        | Bunyan                 | loggily                     |
+| Aspect        | Bunyan                 | Loggily                     |
 | ------------- | ---------------------- | --------------------------- |
 | Output Format | JSON only              | Console (dev) / JSON (prod) |
 | CLI Tools     | bunyan CLI for viewing | None                        |
@@ -156,7 +156,7 @@ log.info("starting", { port: 3000 })
 - You need multiple output streams
 - JSON-only output is fine for development
 
-**Choose loggily if:**
+**Choose Loggily if:**
 
 - You want readable console output in development
 - You need built-in spans
@@ -192,7 +192,7 @@ child.info("logged in", { user: "alice" })
 
 ### Differences
 
-| Aspect        | debug             | loggily           |
+| Aspect        | debug             | Loggily           |
 | ------------- | ----------------- | ----------------- |
 | Log Levels    | No (on/off)       | Yes (5 levels)    |
 | Output Format | printf-style      | Structured JSON   |
@@ -208,7 +208,7 @@ child.info("logged in", { user: "alice" })
 - You don't need log levels
 - You don't need structured data
 
-**Choose loggily if:**
+**Choose Loggily if:**
 
 - You need log levels
 - You need structured data
@@ -233,7 +233,7 @@ See [migration-from-debug.md](./migration-from-debug.md) for a detailed migratio
 
 ---
 
-## Unique Features of loggily
+## Unique Features of Loggily
 
 ### 1. Zero-cost Disabled Logging
 
@@ -305,11 +305,11 @@ NODE_ENV=production bun run app
 
 | Use Case                                | Recommended      |
 | --------------------------------------- | ---------------- |
-| High-performance with optional chaining | loggily          |
-| Built-in span timing                    | loggily          |
+| High-performance with optional chaining | Loggily          |
+| Built-in span timing                    | Loggily          |
 | Multiple transports                     | Pino or Winston  |
 | Extensive configuration                 | Winston          |
 | JSON CLI tools                          | Bunyan           |
 | Simple debugging only                   | debug            |
-| Minimal bundle size                     | debug or loggily |
-| TypeScript-first                        | loggily or Pino  |
+| Minimal bundle size                     | debug or Loggily |
+| TypeScript-first                        | Loggily or Pino  |

@@ -8,9 +8,9 @@
 
 Debug logging, structured logs, and distributed tracing — integrated into one **~3KB** library with a single API. Zero dependencies.
 
-Most projects wire together three separate tools that don't talk to each other: **debug** for conditional output, **pino/winston** for production logs, **OpenTelemetry** for tracing. loggily integrates all three into one unified system — same namespace tree, same output pipeline, same `?.` zero-overhead pattern. Every logger is a potential span: call `.span()` and it becomes one, with automatic timing, parent-child tracking, and trace IDs. Nothing to sync, nothing to configure separately.
+Most projects wire together three separate tools that don't talk to each other: **debug** for conditional output, **pino/winston** for production logs, **OpenTelemetry** for tracing. Loggily integrates all three into one unified system — same namespace tree, same output pipeline, same `?.` zero-overhead pattern. Every logger is a potential span: call `.span()` and it becomes one, with automatic timing, parent-child tracking, and trace IDs. Nothing to sync, nothing to configure separately.
 
-In development, you get colorized console output with timestamps, level colors, and clickable source lines — loggily uses native `console` methods so stack traces stay intact in DevTools. In production, the same code emits structured JSON. No config change needed.
+In development, you get colorized console output with timestamps, level colors, and clickable source lines — Loggily uses native `console` methods so stack traces stay intact in DevTools. In production, the same code emits structured JSON. No config change needed.
 
 Read **[The Journey](docs/guide/journey.md)** for the full story.
 
@@ -50,7 +50,7 @@ Beyond the integration story above, most loggers also waste work when logging is
 log.debug(`state: ${JSON.stringify(computeExpensiveState())}`)
 ```
 
-loggily uses optional chaining to skip the entire call — including argument evaluation:
+Loggily uses optional chaining to skip the entire call — including argument evaluation:
 
 ```typescript
 // loggily — args are NOT evaluated when disabled
