@@ -1,7 +1,7 @@
 import { defineConfig } from "vitepress"
 
 export default defineConfig({
-  title: "loggily",
+  title: "Loggily",
   description: "Clarity without the clutter. Ergonomic unified logs, spans, and debugs for modern TypeScript.",
   base: "/loggily/",
 
@@ -9,7 +9,7 @@ export default defineConfig({
 
   themeConfig: {
     logo: "/logo.svg",
-    siteTitle: "loggily",
+    siteTitle: "Loggily",
 
     nav: [
       { text: "Guide", link: "/guide/journey" },
@@ -24,7 +24,7 @@ export default defineConfig({
           items: [
             { text: "The Journey", link: "/guide/journey" },
             { text: "Getting Started", link: "/guide/getting-started" },
-            { text: "Why loggily?", link: "/guide/why" },
+            { text: "Why Loggily?", link: "/guide/why" },
           ],
         },
         {
