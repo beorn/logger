@@ -2,6 +2,8 @@
 
 **Clarity without the clutter.**
 
+One library. One namespace tree. One output pipeline. For logs (structured JSON or console), debug(), and tracing spans. Near-zero overhead from disabled log levels. Pure TypeScript. ~3KB. Zero dependencies.
+
 [![Tests](https://github.com/beorn/loggily/actions/workflows/test.yml/badge.svg)](https://github.com/beorn/loggily/actions/workflows/test.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.2+-blue.svg)](https://www.typescriptlang.org/)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)

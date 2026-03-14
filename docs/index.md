@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Loggily"
   text: "Clarity without the clutter"
-  tagline: "Debug-style namespaces, structured JSON output, and lightweight spans — integrated into one ~3KB library. Disabled logs skip argument evaluation via optional chaining."
+  tagline: "One library. One namespace tree. One output pipeline. For logs (structured JSON or console), debug(), and tracing spans. Near-zero overhead from disabled log levels. Pure TypeScript. ~3KB. Zero dependencies."
   actions:
     - theme: brand
       text: Get Started
